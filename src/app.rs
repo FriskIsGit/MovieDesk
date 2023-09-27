@@ -3,17 +3,23 @@ use eframe::{AppCreator, egui};
 use eframe::egui::panel::Side;
 use eframe::egui::{Align, FontId, Layout, TextStyle, TopBottomPanel, Vec2, Visuals};
 use eframe::egui::FontFamily::Name;
+use crate::config::Config;
+use crate::themoviedb::{Movie, TheMovieDB};
 
 pub struct MovieApp {
     search: String,
+    user_movies: Vec<Movie>,
+    movie_db: TheMovieDB,
 }
 
 impl MovieApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>, config: Config) -> Self {
         let visuals = Visuals::dark();
         cc.egui_ctx.set_visuals(visuals);
         Self{
-            search: String::from("Search")
+            search: String::from("Search"),
+            user_movies: vec![],
+            movie_db: TheMovieDB::new(config),
         }
     }
     pub fn setup(&mut self) {
@@ -67,7 +73,9 @@ impl MovieApp {
                 let response = ui.add(search_field);
                 let pressed_enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
                 if response.lost_focus() && pressed_enter{
-                    println!("{}", self.search)
+                    println!("Exeucting req");
+                    self.movie_db.search_movie(&self.search);
+                    println!("{}", &self.search);
                 }
             });
     }
