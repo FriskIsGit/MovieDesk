@@ -1,7 +1,4 @@
-use hyper::{Body, Client, Method, Request, Response, Uri};
-use hyper::body::HttpBody;
-use hyper::client::HttpConnector;
-use hyper::http::request::Builder;
+use reqwest::blocking::{Client, Request, Response, RequestBuilder};
 use serde_json::json;
 use crate::config::Config;
 
@@ -9,7 +6,7 @@ const SEARCH_MOVIE_URL: &str = "https://api.themoviedb.org/3/search/movie";
 
 pub struct TheMovieDB{
     config: Config,
-    client: Client<HttpConnector>
+    client: Client,
 }
 
 impl TheMovieDB{
@@ -19,36 +16,29 @@ impl TheMovieDB{
             client: Client::new()
         }
     }
-    fn new_authorized_get(&self) -> Builder {
-        Request::builder()
-            .method(Method::GET)
+    fn new_authorized_get(&self, url: String) -> RequestBuilder {
+        self.client.get(url)
             .header("Accept", "application/json")
             .header("Authorization", format!("Bearer {}", self.config.api_key.clone()))
     }
 
-    pub async fn search_movie(&self, query: &str) -> Vec<Movie>{
-        println!("exeucting serahc move");
+    pub fn search_movie(&self, query: &str) -> Vec<Movie>{
         let mut url = String::from(SEARCH_MOVIE_URL);
         url.push_str(format!("?query={}&include_adult={}", query, true).as_str());
-        let request: Request<Body> = self.new_authorized_get()
-            .uri(url)
-            .body(Body::empty())
-            .expect("Should have been a valid request");
-        let future = self.client.request(request);
-        println!("After future before send");
-        let response = future.await.expect("Expected a response");
-        println!("Response code: {}", response.status().as_u16());
-        let (_, body) = response.into_parts();
-        let str_body: String = TheMovieDB::body_to_string(body).await;
-        println!("CONTENT: {}", str_body);
-        return Vec::new();
-    }
 
-    async fn body_to_string(body: Body) -> String {
-        if let Ok(bytes) = hyper::body::to_bytes(body).await {
-            return String::from_utf8(bytes.to_vec()).unwrap()
+        let request = self.new_authorized_get(url);
+        println!("Executing request..");
+        let result = request.send();
+        if !result.is_ok() {
+            panic!("Error on sending request");
         }
-        return String::new();
+        let response: Response = result.unwrap();
+        let status = response.status();
+        if !status.is_success() {
+            println!("status: {}", status)
+        }
+        println!("content: {}", response.text().unwrap());
+        return Vec::new();
     }
 }
 
