@@ -76,6 +76,9 @@ impl MovieApp {
                     self.movie_db.search_movie(&self.search);
                     println!("{}", &self.search);
                 }
+
+                ui.label("Kihau waz here...");
+                ui.image(egui::include_image!("../res/test.png"));
             });
     }
 

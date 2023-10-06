@@ -17,6 +17,7 @@ fn main() {
     options.min_window_size = Some(Vec2::new(30f32, 30f32));
     options.drag_and_drop_support = true;
     let app_creator: AppCreator = Box::new(|cc| {
+        egui_extras::install_image_loaders(&cc.egui_ctx);
         let mut window = MovieApp::new(cc, config);
         window.setup();
         Box::new(window)
