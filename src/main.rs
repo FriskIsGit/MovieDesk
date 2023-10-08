@@ -1,6 +1,7 @@
 mod themoviedb;
 mod app;
 mod config;
+mod production;
 
 use std::any::Any;
 use std::time::Duration;

@@ -1,14 +1,18 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 use eframe::{AppCreator, egui};
 use eframe::egui::panel::Side;
-use eframe::egui::{Align, FontId, Layout, TextStyle, TopBottomPanel, Vec2, Visuals};
+use eframe::egui::{Align, FontId, ImageSource, Layout, TextStyle, TopBottomPanel, Vec2, Visuals};
 use eframe::egui::FontFamily::Name;
+use eframe::egui::ImageSource::Uri;
 use crate::config::Config;
-use crate::themoviedb::{Movie, TheMovieDB};
+use crate::production::Production;
+use crate::themoviedb::{TheMovieDB, Width};
 
 pub struct MovieApp {
     search: String,
-    user_movies: Vec<Movie>,
+    user_productions: Vec<Production>,
+    search_productions: Vec<Production>,
     movie_db: TheMovieDB,
 }
 
@@ -18,7 +22,8 @@ impl MovieApp {
         cc.egui_ctx.set_visuals(visuals);
         Self{
             search: String::from("Search"),
-            user_movies: vec![],
+            user_productions: vec![],
+            search_productions: vec![],
             movie_db: TheMovieDB::new(config),
         }
     }
@@ -66,19 +71,59 @@ impl MovieApp {
         let left = egui::SidePanel::left("search_panel");
         left.resizable(true)
             .show(ctx, |ui| {
-                ui.heading("Find a movie");
+                ui.heading("Find a production");
                 ui.separator();
                 let search_field = egui::TextEdit::singleline(&mut self.search)
-                    .min_size(Vec2::new(10f32, 10f32));
+                    .min_size(Vec2::new(20f32, 30f32));
                 let response = ui.add(search_field);
                 let pressed_enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
+
                 if response.lost_focus() && pressed_enter{
-                    self.movie_db.search_movie(&self.search);
-                    println!("{}", &self.search);
+                    self.search_productions = self.movie_db.search_production(&self.search);
                 }
 
-                ui.label("Kihau waz here...");
-                ui.image(egui::include_image!("../res/test.png"));
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    egui::Grid::new("gridder").max_col_width(300f32).min_row_height(200f32).show(ui, |ui| {
+                        for movie in &self.search_productions {
+                            match movie {
+                                Production::Film(movie) => {
+                                    if movie.poster_path.is_some() {
+                                        let image_url = &self.movie_db.get_full_poster_url(
+                                            movie.poster_path.clone().unwrap().as_str(),
+                                            Width::W300
+                                        );
+
+                                        ui.image(Uri(Cow::from(image_url.as_str())));
+                                    }
+
+                                    let mut desc = String::from(&movie.title);
+                                    desc.push('\n');
+                                    desc.push_str(&movie.overview);
+                                    ui.label(desc);
+                                    ui.label(movie.vote_average.to_string());
+                                }
+                                Production::Series(show) => {
+                                    if show.poster_path.is_some() {
+                                        let image_url = self.movie_db.get_full_poster_url(
+                                            show.poster_path.clone().unwrap().as_str(),
+                                            Width::W300
+                                        );
+
+                                        ui.image(Uri(Cow::from(image_url.as_str())));
+                                    }
+                                    let mut desc = String::from(&show.name);
+                                    desc.push('\n');
+                                    desc.push_str(&show.overview);
+                                    ui.label(desc);
+                                    ui.label(show.vote_average.to_string());
+                                }
+                            }
+                            ui.end_row();
+
+                        }
+                    });
+                });
+
             });
     }
 
