@@ -130,8 +130,8 @@ impl MovieApp {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
             egui::Grid::new("gridder")
-                .max_col_width(400f32)
-                .min_row_height(300f32)
+                .max_col_width(180.0)
+                .min_row_height(200.0)
                 .show(ui, |ui| {
                     for (i, movie) in self.search_productions.iter().enumerate() {
                         match movie {
