@@ -6,10 +6,10 @@ use crate::production;
 use crate::production::{Movie, Production, TVShow};
 use crate::production::Production::Series;
 use crate::production::Production::Film;
+use crate::show_details::{SeasonDetails, ShowDetails};
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
 const SHOW_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
-const MOVIE_DETAILS_URL: &str = "https://api.themoviedb.org/3/movie/"; //{movie_id}
 const IMAGE_URL: &str = "https://image.tmdb.org/t/p/";
 
 pub struct TheMovieDB{
@@ -30,7 +30,7 @@ impl TheMovieDB{
             .header("Authorization", format!("Bearer {}", self.config.api_key.to_owned()))
     }
 
-    pub fn search_production(&self, query: &str) -> Vec<Production>{
+    pub fn search_production(&self, query: &str) -> Vec<Production> {
         let mut url = String::from(SEARCH_MULTI_URL);
         url.push_str(format!("?query={}&include_adult={}", query, true).as_str());
 
@@ -83,19 +83,7 @@ impl TheMovieDB{
         return url;
     }
 
-    pub fn movie_details(&self, id: u32) {
-        let mut url = String::from(MOVIE_DETAILS_URL);
-        url.push_str(id.to_string().as_str());
-
-        let request = self.new_authorized_get(url);
-        println!("Executing request..");
-        let result = request.send();
-        if !result.is_ok() {
-            panic!("Error on sending request");
-        }
-    }
-
-    pub fn show_details(&self, id: u32) {
+    pub fn get_show_details(&self, id: u32) -> ShowDetails {
         let mut url = String::from(SHOW_DETAILS_URL);
         url.push_str(id.to_string().as_str());
 
@@ -105,6 +93,25 @@ impl TheMovieDB{
         if !result.is_ok() {
             panic!("Error on sending request");
         }
+        let json = result.unwrap().text().unwrap();
+        println!("show_details_json: {}", json);
+        ShowDetails::parse(json.as_str())
+    }
+
+    pub fn get_season_details(&self, show_id: u32, season_number: u32) -> SeasonDetails {
+        let mut url = String::from(SHOW_DETAILS_URL);
+        url.push_str(show_id.to_string().as_str());
+        url.push_str("/season/");
+        url.push_str(season_number.to_string().as_str());
+        let request = self.new_authorized_get(url);
+        println!("Executing request..");
+        let result = request.send();
+        if !result.is_ok() {
+            panic!("Error on sending request");
+        }
+        let json = result.unwrap().text().unwrap();
+        println!("season_details_json: {}", json);
+        SeasonDetails::parse(json.as_str())
     }
 }
 

@@ -6,7 +6,8 @@ use eframe::egui::{Align, FontId, ImageSource, Layout, TextStyle, TopBottomPanel
 use eframe::egui::FontFamily::Name;
 use eframe::egui::ImageSource::Uri;
 use crate::config::Config;
-use crate::production::Production;
+use crate::production::{Production, TVShow};
+use crate::production::Production::Series;
 use crate::themoviedb::{TheMovieDB, Width};
 
 pub struct MovieApp {
@@ -81,9 +82,20 @@ impl MovieApp {
                 let mut search_triggered = false;
                 if response.lost_focus() && pressed_enter{
                     self.search_productions = self.movie_db.search_production(&self.search);
+                    //
+                    let prod = &self.search_productions[0];
+                    if let Series(show) = prod {
+                        let show_details = self.movie_db.get_show_details(show.id);
+                        let season_details = self.movie_db.get_season_details(
+                            show.id,
+                            show_details.number_of_seasons
+                        );
+                        println!("season details {:?}", season_details);
+
+                    }
+
                     search_triggered = true;
                 }
-
                 self.production_grid(ui, search_triggered);
                 ui.separator();
             });

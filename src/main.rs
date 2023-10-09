@@ -2,6 +2,8 @@ mod themoviedb;
 mod app;
 mod config;
 mod production;
+mod show_details;
+mod credits;
 
 use std::any::Any;
 use std::time::Duration;
@@ -15,6 +17,7 @@ use crate::config::Config;
 // - perhaps make the request on a separate thread in the first place
 //TODO temporary workaround for wininit compilation time(15s)?
 //TODO add adult checkbox somewhere?
+//TODO add exception handling to requests to avoid crashing the app in case something goes wrong
 
 fn main() {
     println!("Running!");
