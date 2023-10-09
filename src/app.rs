@@ -80,20 +80,9 @@ impl MovieApp {
                 let pressed_enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
 
                 let mut search_triggered = false;
+
                 if response.lost_focus() && pressed_enter{
                     self.search_productions = self.movie_db.search_production(&self.search);
-                    //
-                    let prod = &self.search_productions[0];
-                    if let Series(show) = prod {
-                        let show_details = self.movie_db.get_show_details(show.id);
-                        let season_details = self.movie_db.get_season_details(
-                            show.id,
-                            show_details.number_of_seasons
-                        );
-                        println!("season details {:?}", season_details);
-
-                    }
-
                     search_triggered = true;
                 }
                 self.production_grid(ui, search_triggered);
@@ -132,7 +121,7 @@ impl MovieApp {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
             egui::Grid::new("gridder").max_col_width(400f32).min_row_height(300f32).show(ui, |ui| {
-                for movie in &self.search_productions {
+                for (i, movie) in self.search_productions.iter().enumerate() {
                     match movie {
                         Production::Film(movie) => {
                             if movie.poster_path.is_some() {
@@ -141,7 +130,10 @@ impl MovieApp {
                                     Width::W300
                                 );
 
-                                ui.image(Uri(Cow::from(image_url.as_str())));
+                                let poster = ui.image(Uri(Cow::from(image_url.as_str())));
+                                if poster.clicked() {
+                                    println!("CLICKED ON: {}", movie.title);
+                                }
                             }
 
                             let mut desc = String::from(&movie.title);
@@ -157,7 +149,19 @@ impl MovieApp {
                                     Width::W300
                                 );
 
-                                ui.image(Uri(Cow::from(image_url.as_str())));
+                                let poster = ui.image(Uri(Cow::from(image_url.as_str())));
+                                if poster.clicked() {
+                                    println!("CLICKED ON: {}", show.name);
+                                    let prod = &self.search_productions[i];
+                                    if let Series(show) = prod {
+                                        let show_details = self.movie_db.get_show_details(show.id);
+                                        let season_details = self.movie_db.get_season_details(
+                                            show.id,
+                                            show_details.number_of_seasons
+                                        );
+                                        println!("season details {:?}", season_details);
+                                    }
+                                }
                             }
                             let mut desc = String::from(&show.name);
                             desc.push('\n');
