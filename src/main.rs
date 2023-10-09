@@ -1,16 +1,16 @@
-mod themoviedb;
 mod app;
 mod config;
+mod credits;
 mod production;
 mod show_details;
-mod credits;
+mod themoviedb;
 
-use std::any::Any;
-use std::time::Duration;
-use eframe::AppCreator;
-use eframe::egui::Vec2;
 use crate::app::MovieApp;
 use crate::config::Config;
+use eframe::egui::Vec2;
+use eframe::AppCreator;
+use std::any::Any;
+use std::time::Duration;
 
 //TODO add + in every row with a production or drag and drop to move items to the center panel
 //TODO load images on a separate thread so it doesn't lag ui, display buffering circle(egui does it already)?,
@@ -34,4 +34,3 @@ fn main() {
     });
     let _ = eframe::run_native("App", options, app_creator); //blocking call
 }
-

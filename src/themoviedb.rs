@@ -1,33 +1,37 @@
-use std::fmt::format;
-use reqwest::blocking::{Client, Request, Response, RequestBuilder};
-use serde_json::{Value};
 use crate::config::Config;
 use crate::production;
-use crate::production::{Movie, Production, TVShow};
-use crate::production::Production::Series;
 use crate::production::Production::Film;
+use crate::production::Production::Series;
+use crate::production::{Movie, Production, TVShow};
 use crate::show_details::{SeasonDetails, ShowDetails};
+use reqwest::blocking::{Client, Request, RequestBuilder, Response};
+use serde_json::Value;
+use std::fmt::format;
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
 const SHOW_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
 const IMAGE_URL: &str = "https://image.tmdb.org/t/p/";
 
-pub struct TheMovieDB{
+pub struct TheMovieDB {
     config: Config,
     client: Client,
 }
 
-impl TheMovieDB{
-    pub fn new(config: Config) -> Self{
-        Self{
+impl TheMovieDB {
+    pub fn new(config: Config) -> Self {
+        Self {
             config,
-            client: Client::new()
+            client: Client::new(),
         }
     }
     fn new_authorized_get(&self, url: String) -> RequestBuilder {
-        self.client.get(url)
+        self.client
+            .get(url)
             .header("Accept", "application/json")
-            .header("Authorization", format!("Bearer {}", self.config.api_key.to_owned()))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.config.api_key.to_owned()),
+            )
     }
 
     pub fn search_production(&self, query: &str) -> Vec<Production> {
@@ -72,11 +76,11 @@ impl TheMovieDB{
     pub fn get_full_poster_url(poster: &str, width: Width) -> String {
         let mut url = String::from(IMAGE_URL);
         let size = match width {
-            Width::W200 => {"w200"}
-            Width::W300 => {"w300"}
-            Width::W400 => {"w400"}
-            Width::W500 => {"w500"}
-            Width::ORIGINAL => {"original"}
+            Width::W200 => "w200",
+            Width::W300 => "w300",
+            Width::W400 => "w400",
+            Width::W500 => "w500",
+            Width::ORIGINAL => "original",
         };
         url.push_str(size);
         url.push_str(poster);
@@ -115,6 +119,10 @@ impl TheMovieDB{
     }
 }
 
-pub enum Width{
-    W200, W300, W400, W500, ORIGINAL
+pub enum Width {
+    W200,
+    W300,
+    W400,
+    W500,
+    ORIGINAL,
 }

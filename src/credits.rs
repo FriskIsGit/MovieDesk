@@ -1,19 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MovieCredits{
+pub struct MovieCredits {}
 
-}
-
-impl MovieCredits{
-
-}
+impl MovieCredits {}
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ShowCredits{
+pub struct ShowCredits {}
 
-}
-
-impl ShowCredits{
-
-}
+impl ShowCredits {}

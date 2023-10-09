@@ -14,13 +14,13 @@ pub struct TVShow {
 }
 
 impl TVShow {
-    pub fn parse(json: &str) -> TVShow{
+    pub fn parse(json: &str) -> TVShow {
         serde_json::from_str(json).expect("Failed to deserialize a TVShow object")
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Movie{
+pub struct Movie {
     pub id: u32,
     pub title: String,
     pub original_language: String,
@@ -32,13 +32,13 @@ pub struct Movie{
     pub adult: bool,
 }
 
-impl Movie{
-    pub fn parse(json: &str) -> Movie{
+impl Movie {
+    pub fn parse(json: &str) -> Movie {
         serde_json::from_str(json).expect("Failed to deserialize a Movie object")
     }
 }
 
-pub enum Production{
+pub enum Production {
     Film(Movie),
-    Series(TVShow)
+    Series(TVShow),
 }
