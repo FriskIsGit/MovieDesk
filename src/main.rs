@@ -16,7 +16,6 @@ use std::time::Duration;
 //TODO load images on a separate thread so it doesn't lag ui, display buffering circle(egui does it already)?,
 // - perhaps make the request on a separate thread in the first place
 //TODO temporary workaround for wininit compilation time(15s)?
-//TODO add adult checkbox somewhere?
 //TODO add exception handling to requests to avoid crashing the app in case something goes wrong
 
 fn main() {

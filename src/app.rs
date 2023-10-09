@@ -14,6 +14,7 @@ use std::hint;
 use std::sync::Arc;
 
 pub struct MovieApp {
+    show_adult_content: bool,
     search: String,
     user_productions: Vec<Production>,
     search_productions: Vec<Production>,
@@ -25,6 +26,7 @@ impl MovieApp {
         let visuals = Visuals::dark();
         cc.egui_ctx.set_visuals(visuals);
         Self {
+            show_adult_content: false,
             search: String::new(),
             user_productions: vec![],
             search_productions: vec![],
@@ -76,7 +78,7 @@ impl MovieApp {
             ui.heading("Find a production");
             ui.separator();
             let search_field = egui::TextEdit::singleline(&mut self.search)
-                .min_size(Vec2::new(20f32, 30f32))
+                .min_size(Vec2::new(20.0, 0.0))
                 .hint_text("Search");
 
             let response = ui.add(search_field);
@@ -88,6 +90,12 @@ impl MovieApp {
                 self.search_productions = self.movie_db.search_production(&self.search);
                 search_triggered = true;
             }
+
+            ui.add_space(5.0);
+
+            ui.checkbox(&mut self.show_adult_content, "Show adult content");
+            ui.separator();
+
             self.production_grid(ui, search_triggered);
             ui.separator();
         });
@@ -128,6 +136,10 @@ impl MovieApp {
                     for (i, movie) in self.search_productions.iter().enumerate() {
                         match movie {
                             Production::Film(movie) => {
+                                if movie.adult && !self.show_adult_content {
+                                    continue;
+                                }
+
                                 if movie.poster_path.is_some() {
                                     let image_url = TheMovieDB::get_full_poster_url(
                                         movie.poster_path.to_owned().unwrap().as_str(),
@@ -150,6 +162,10 @@ impl MovieApp {
                                 ui.label(movie.vote_average.to_string());
                             }
                             Production::Series(show) => {
+                                if show.adult && !self.show_adult_content {
+                                    continue;
+                                }
+
                                 if show.poster_path.is_some() {
                                     let image_url = TheMovieDB::get_full_poster_url(
                                         show.poster_path.to_owned().unwrap().as_str(),
