@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::hint;
 use std::sync::Arc;
 use eframe::{AppCreator, egui};
 use eframe::egui::panel::Side;
@@ -22,7 +23,7 @@ impl MovieApp {
         let visuals = Visuals::dark();
         cc.egui_ctx.set_visuals(visuals);
         Self{
-            search: String::from("Search"),
+            search: String::new(),
             user_productions: vec![],
             search_productions: vec![],
             movie_db: TheMovieDB::new(config),
@@ -75,7 +76,9 @@ impl MovieApp {
                 ui.heading("Find a production");
                 ui.separator();
                 let search_field = egui::TextEdit::singleline(&mut self.search)
-                    .min_size(Vec2::new(20f32, 30f32));
+                    .min_size(Vec2::new(20f32, 30f32))
+                    .hint_text("Search");
+
                 let response = ui.add(search_field);
                 let pressed_enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
 
@@ -130,7 +133,9 @@ impl MovieApp {
                                     Width::W300
                                 );
 
-                                let poster = ui.image(Uri(Cow::from(image_url.as_str())));
+                                let poster = ui.image(Uri(Cow::from(image_url.as_str())))
+                                    .interact(egui::Sense::click());
+
                                 if poster.clicked() {
                                     println!("CLICKED ON: {}", movie.title);
                                 }
@@ -149,7 +154,9 @@ impl MovieApp {
                                     Width::W300
                                 );
 
-                                let poster = ui.image(Uri(Cow::from(image_url.as_str())));
+                                let poster = ui.image(Uri(Cow::from(image_url.as_str())))
+                                    .interact(egui::Sense::click());
+
                                 if poster.clicked() {
                                     println!("CLICKED ON: {}", show.name);
                                     let prod = &self.search_productions[i];
