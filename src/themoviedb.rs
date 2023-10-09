@@ -1,3 +1,4 @@
+use std::fmt::format;
 use reqwest::blocking::{Client, Request, Response, RequestBuilder};
 use serde_json::{Value};
 use crate::config::Config;
@@ -7,6 +8,8 @@ use crate::production::Production::Series;
 use crate::production::Production::Film;
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
+const SHOW_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
+const MOVIE_DETAILS_URL: &str = "https://api.themoviedb.org/3/movie/"; //{movie_id}
 const IMAGE_URL: &str = "https://image.tmdb.org/t/p/";
 
 pub struct TheMovieDB{
@@ -24,7 +27,7 @@ impl TheMovieDB{
     fn new_authorized_get(&self, url: String) -> RequestBuilder {
         self.client.get(url)
             .header("Accept", "application/json")
-            .header("Authorization", format!("Bearer {}", self.config.api_key.clone()))
+            .header("Authorization", format!("Bearer {}", self.config.api_key.to_owned()))
     }
 
     pub fn search_production(&self, query: &str) -> Vec<Production>{
@@ -66,7 +69,7 @@ impl TheMovieDB{
         }
         return productions;
     }
-    pub fn get_full_poster_url(&self, poster: &str, width: Width) -> String {
+    pub fn get_full_poster_url(poster: &str, width: Width) -> String {
         let mut url = String::from(IMAGE_URL);
         let size = match width {
             Width::W200 => {"w200"}
@@ -78,6 +81,30 @@ impl TheMovieDB{
         url.push_str(size);
         url.push_str(poster);
         return url;
+    }
+
+    pub fn movie_details(&self, id: u32) {
+        let mut url = String::from(MOVIE_DETAILS_URL);
+        url.push_str(id.to_string().as_str());
+
+        let request = self.new_authorized_get(url);
+        println!("Executing request..");
+        let result = request.send();
+        if !result.is_ok() {
+            panic!("Error on sending request");
+        }
+    }
+
+    pub fn show_details(&self, id: u32) {
+        let mut url = String::from(SHOW_DETAILS_URL);
+        url.push_str(id.to_string().as_str());
+
+        let request = self.new_authorized_get(url);
+        println!("Executing request..");
+        let result = request.send();
+        if !result.is_ok() {
+            panic!("Error on sending request");
+        }
     }
 }
 

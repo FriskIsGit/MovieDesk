@@ -10,6 +10,12 @@ use eframe::egui::Vec2;
 use crate::app::MovieApp;
 use crate::config::Config;
 
+//TODO add + in every row with a production or drag and drop to move items to the center panel
+//TODO load images on a separate thread so it doesn't lag ui, display buffering circle(egui does it already)?,
+// - perhaps make the request on a separate thread in the first place
+//TODO temporary workaround for wininit compilation time(15s)?
+//TODO add adult checkbox somewhere?
+
 fn main() {
     println!("Running!");
     let config = Config::read_config("config.json");
