@@ -39,10 +39,10 @@ impl MovieApp {
 
         // Install my own font (maybe supporting non-latin characters).
         // .ttf and .otf files supported.
-        /*fonts.font_data.insert(
-            "my_font".to_owned(),
-            egui::FontData::from_static(include_bytes!("/fonts/Hack-Regular.ttf")),
-        );*/
+        // fonts.font_data.insert(
+        //     "my_font".to_owned(),
+        //     egui::FontData::from_static(include_bytes!("/fonts/Hack-Regular.ttf")),
+        // );
 
         // Put my font first (highest priority) for proportional text:
         fonts
@@ -59,7 +59,7 @@ impl MovieApp {
             .push("my_font".to_owned());
 
         // Tell egui to use these fonts:
-        //ctx.set_fonts(fonts);
+        // ctx.set_fonts(fonts);
     }
 }
 
@@ -152,7 +152,7 @@ impl MovieApp {
         ui.label(movie.vote_average.to_string());
     }
 
-    fn add_show_entry(&self, ui: &mut Ui, show: &TVShow, production_idx: usize) {
+    fn add_show_entry(&self, ui: &mut Ui, show: &TVShow) {
         if show.adult && !self.show_adult_content {
             return;
         }
@@ -169,16 +169,12 @@ impl MovieApp {
 
             if poster.clicked() {
                 println!("CLICKED ON: {}", show.name);
-                let prod = &self.search_productions[production_idx];
-                if let Series(show) = prod {
-                    let show_details =
-                    self.movie_db.get_show_details(show.id);
-                    let season_details = self.movie_db.get_season_details(
-                        show.id,
-                        show_details.number_of_seasons,
-                    );
-                    println!("season details {:?}", season_details);
-                }
+                let show_details = self.movie_db.get_show_details(show.id);
+                let season_details = self.movie_db.get_season_details(
+                    show.id,
+                    show_details.number_of_seasons,
+                );
+                println!("season details {:?}", season_details);
             }
         }
         let mut desc = String::from(&show.name);
@@ -198,10 +194,10 @@ impl MovieApp {
                 .max_col_width(180.0)
                 .min_row_height(200.0)
                 .show(ui, |ui| {
-                    for (i, movie) in self.search_productions.iter().enumerate() {
+                    for movie in self.search_productions.iter() {
                         match movie {
                             Production::Film(movie) => self.add_film_entry(ui, movie),
-                            Production::Series(show) => self.add_show_entry(ui, show, i),
+                            Production::Series(show) => self.add_show_entry(ui, show),
                         }
                         ui.end_row();
                     }

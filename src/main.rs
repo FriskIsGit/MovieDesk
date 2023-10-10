@@ -9,8 +9,6 @@ use crate::app::MovieApp;
 use crate::config::Config;
 use eframe::egui::Vec2;
 use eframe::AppCreator;
-use std::any::Any;
-use std::time::Duration;
 
 // TODO: Add + in every row with a production or drag and drop to move items to the center panel
 // TODO: Load images on a separate thread so it doesn't lag ui, display buffering circle(egui does it already)?
@@ -25,7 +23,7 @@ fn main() {
     let config = Config::read_config("config.json");
 
     let mut options = eframe::NativeOptions::default();
-    options.min_window_size = Some(Vec2::new(30f32, 30f32));
+    options.min_window_size = Some(Vec2::new(30.0, 30.0));
     options.drag_and_drop_support = true;
     let app_creator: AppCreator = Box::new(|cc| {
         egui_extras::install_image_loaders(&cc.egui_ctx);
@@ -33,5 +31,7 @@ fn main() {
         window.setup();
         Box::new(window)
     });
-    let _ = eframe::run_native("App", options, app_creator); //blocking call
+
+    // Blocks the main thread.
+    let _ = eframe::run_native("App", options, app_creator);
 }
