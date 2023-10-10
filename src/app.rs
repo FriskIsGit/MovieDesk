@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::production::Production::Series;
-use crate::production::{Production, TVShow};
+use crate::production::{Production, TVShow, Movie};
 use crate::themoviedb::{TheMovieDB, Width};
 use eframe::egui::panel::Side;
 use eframe::egui::FontFamily::Name;
@@ -124,78 +124,84 @@ impl MovieApp {
         let left = TopBottomPanel::top("top_panel");
         left.resizable(true).show(ctx, |ui| {});
     }
+
+    fn add_film_entry(&self, ui: &mut Ui, movie: &Movie) {
+        if movie.adult && !self.show_adult_content {
+            return;
+        }
+
+        if movie.poster_path.is_some() {
+            let image_url = TheMovieDB::get_full_poster_url(
+                movie.poster_path.to_owned().unwrap().as_str(),
+                Width::W300,
+            );
+
+            let poster = ui
+                .image(Uri(Cow::from(image_url.as_str())))
+                .interact(egui::Sense::click());
+
+            if poster.clicked() {
+                println!("CLICKED ON: {}", movie.title);
+            }
+        }
+
+        let mut desc = String::from(&movie.title);
+        desc.push('\n');
+        desc.push_str(&movie.overview);
+        ui.label(desc);
+        ui.label(movie.vote_average.to_string());
+    }
+
+    fn add_show_entry(&self, ui: &mut Ui, show: &TVShow, production_idx: usize) {
+        if show.adult && !self.show_adult_content {
+            return;
+        }
+
+        if show.poster_path.is_some() {
+            let image_url = TheMovieDB::get_full_poster_url(
+                show.poster_path.to_owned().unwrap().as_str(),
+                Width::W300,
+            );
+
+            let poster = ui
+                .image(Uri(Cow::from(image_url.as_str())))
+                .interact(egui::Sense::click());
+
+            if poster.clicked() {
+                println!("CLICKED ON: {}", show.name);
+                let prod = &self.search_productions[production_idx];
+                if let Series(show) = prod {
+                    let show_details =
+                    self.movie_db.get_show_details(show.id);
+                    let season_details = self.movie_db.get_season_details(
+                        show.id,
+                        show_details.number_of_seasons,
+                    );
+                    println!("season details {:?}", season_details);
+                }
+            }
+        }
+        let mut desc = String::from(&show.name);
+        desc.push('\n');
+        desc.push_str(&show.overview);
+        ui.label(desc);
+        ui.label(show.vote_average.to_string());
+    }
+
     fn production_grid(&self, ui: &mut Ui, searched: bool) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             if searched {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
+
             egui::Grid::new("gridder")
                 .max_col_width(180.0)
                 .min_row_height(200.0)
                 .show(ui, |ui| {
                     for (i, movie) in self.search_productions.iter().enumerate() {
                         match movie {
-                            Production::Film(movie) => {
-                                if movie.adult && !self.show_adult_content {
-                                    continue;
-                                }
-
-                                if movie.poster_path.is_some() {
-                                    let image_url = TheMovieDB::get_full_poster_url(
-                                        movie.poster_path.to_owned().unwrap().as_str(),
-                                        Width::W300,
-                                    );
-
-                                    let poster = ui
-                                        .image(Uri(Cow::from(image_url.as_str())))
-                                        .interact(egui::Sense::click());
-
-                                    if poster.clicked() {
-                                        println!("CLICKED ON: {}", movie.title);
-                                    }
-                                }
-
-                                let mut desc = String::from(&movie.title);
-                                desc.push('\n');
-                                desc.push_str(&movie.overview);
-                                ui.label(desc);
-                                ui.label(movie.vote_average.to_string());
-                            }
-                            Production::Series(show) => {
-                                if show.adult && !self.show_adult_content {
-                                    continue;
-                                }
-
-                                if show.poster_path.is_some() {
-                                    let image_url = TheMovieDB::get_full_poster_url(
-                                        show.poster_path.to_owned().unwrap().as_str(),
-                                        Width::W300,
-                                    );
-
-                                    let poster = ui
-                                        .image(Uri(Cow::from(image_url.as_str())))
-                                        .interact(egui::Sense::click());
-
-                                    if poster.clicked() {
-                                        println!("CLICKED ON: {}", show.name);
-                                        let prod = &self.search_productions[i];
-                                        if let Series(show) = prod {
-                                            let show_details =
-                                                self.movie_db.get_show_details(show.id);
-                                            let season_details = self.movie_db.get_season_details(
-                                                show.id,
-                                                show_details.number_of_seasons,
-                                            );
-                                            println!("season details {:?}", season_details);
-                                        }
-                                    }
-                                }
-                                let mut desc = String::from(&show.name);
-                                desc.push('\n');
-                                desc.push_str(&show.overview);
-                                ui.label(desc);
-                                ui.label(show.vote_average.to_string());
-                            }
+                            Production::Film(movie) => self.add_film_entry(ui, movie),
+                            Production::Series(show) => self.add_show_entry(ui, show, i),
                         }
                         ui.end_row();
                     }
