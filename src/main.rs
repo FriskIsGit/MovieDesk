@@ -13,7 +13,7 @@ use eframe::AppCreator;
 // TODO: Add + in every row with a production or drag and drop to move items to the center panel
 // TODO: Load images on a separate thread so it doesn't lag ui, display buffering circle(egui does it already)?
 //       Perhaps make the request on a separate thread in the first place
-// TODO: Temporary workaround for winit compilation time(15s)?
+// TODO: Temporary workaround for winit compilation time (15s)?
 // TODO: Add exception handling to requests to avoid crashing the app in case something goes wrong
 // TODO: Add scaling to the posters and trim long descriptions, don't artificially stretch the left
 //       panel when production entries are added.

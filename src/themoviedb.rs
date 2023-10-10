@@ -1,16 +1,23 @@
 use crate::config::Config;
-use crate::production;
 use crate::production::Production::Film;
 use crate::production::Production::Series;
 use crate::production::{Movie, Production, TVShow};
 use crate::show_details::{SeasonDetails, ShowDetails};
-use reqwest::blocking::{Client, Request, RequestBuilder, Response};
+use reqwest::blocking::{Client, RequestBuilder, Response};
 use serde_json::Value;
-use std::fmt::format;
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
 const SHOW_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
 const IMAGE_URL: &str = "https://image.tmdb.org/t/p/";
+
+#[allow(dead_code)]
+pub enum Width {
+    W200,
+    W300,
+    W400,
+    W500,
+    ORIGINAL,
+}
 
 pub struct TheMovieDB {
     config: Config,
@@ -24,6 +31,7 @@ impl TheMovieDB {
             client: Client::new(),
         }
     }
+
     fn new_authorized_get(&self, url: String) -> RequestBuilder {
         self.client
             .get(url)
@@ -73,6 +81,7 @@ impl TheMovieDB {
         }
         return productions;
     }
+
     pub fn get_full_poster_url(poster: &str, width: Width) -> String {
         let mut url = String::from(IMAGE_URL);
         let size = match width {
@@ -117,12 +126,4 @@ impl TheMovieDB {
         println!("season_details_json: {}", json);
         SeasonDetails::parse(json.as_str())
     }
-}
-
-pub enum Width {
-    W200,
-    W300,
-    W400,
-    W500,
-    ORIGINAL,
 }

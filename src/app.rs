@@ -1,17 +1,10 @@
 use crate::config::Config;
-use crate::production::Production::Series;
 use crate::production::{Production, TVShow, Movie};
 use crate::themoviedb::{TheMovieDB, Width};
-use eframe::egui::panel::Side;
-use eframe::egui::FontFamily::Name;
 use eframe::egui::ImageSource::Uri;
-use eframe::egui::{
-    Align, FontId, ImageSource, Layout, TextStyle, TopBottomPanel, Ui, Vec2, Visuals,
-};
-use eframe::{egui, AppCreator};
+use eframe::egui::{Align, Layout, TopBottomPanel, Ui, Vec2, Visuals};
+use eframe::egui;
 use std::borrow::Cow;
-use std::hint;
-use std::sync::Arc;
 
 pub struct MovieApp {
     show_adult_content: bool,
@@ -64,7 +57,7 @@ impl MovieApp {
 }
 
 impl eframe::App for MovieApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.search_panel(&ctx);
         self.right_panel(&ctx);
         self.central_panel(&ctx);
@@ -108,7 +101,7 @@ impl MovieApp {
                 let _ = ui.button("Look at me, I am becoming so wide!");
                 ui.label("TestLabel");
             });
-            egui::ScrollArea::vertical().show(ui, |ui| {});
+            egui::ScrollArea::vertical().show(ui, |_| {});
         });
     }
 
@@ -122,7 +115,7 @@ impl MovieApp {
 
     fn top_panel(&mut self, ctx: &egui::Context) {
         let left = TopBottomPanel::top("top_panel");
-        left.resizable(true).show(ctx, |ui| {});
+        left.resizable(true).show(ctx, |_| {});
     }
 
     fn add_film_entry(&self, ui: &mut Ui, movie: &Movie) {
