@@ -26,7 +26,7 @@ impl MovieApp {
         let visuals = Visuals::dark();
         cc.egui_ctx.set_visuals(visuals);
         Self {
-            show_adult_content: false,
+            show_adult_content: config.include_adult,
             search: String::new(),
             user_productions: vec![],
             search_productions: vec![],
