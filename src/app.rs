@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::production::{Production, TVShow, Movie};
 use crate::themoviedb::{TheMovieDB, Width};
 use eframe::egui::ImageSource::Uri;
-use eframe::egui::{Align, Layout, TopBottomPanel, Ui, Vec2, Visuals};
+use eframe::egui::{Align, Layout, TopBottomPanel, Ui, Vec2, Visuals, TextStyle, TextBuffer};
 use eframe::egui;
 use std::borrow::Cow;
 
@@ -26,6 +26,7 @@ impl MovieApp {
             movie_db: TheMovieDB::new(config),
         }
     }
+
     pub fn setup(&mut self) {
         // Start with the default fonts (we will be adding to them rather than replacing them).
         let mut fonts = egui::FontDefinitions::default();
@@ -138,11 +139,25 @@ impl MovieApp {
             }
         }
 
-        let mut desc = String::from(&movie.title);
-        desc.push('\n');
-        desc.push_str(&movie.overview);
-        ui.label(desc);
-        ui.label(movie.vote_average.to_string());
+        ui.vertical(|ui| {
+            ui.add_space(10.0);
+            ui.heading(&movie.title);
+            ui.add_space(8.0);
+            ui.label(format!("Rating: {} / 10", movie.vote_average));
+            ui.add_space(4.0);
+            ui.label(format!("Release date: {}", movie.release_date));
+            ui.add_space(8.0);
+            if movie.overview.len() > 200 {
+                // NOTE: This is really bad! We should cashe the output of the format to not call
+                // it every single frame. We should also not take the slice here because we can
+                // panic here since strings are UTF-8 and this take bytes.
+                //                                 vvvvvvvvvvvvvvvvvvvvvv
+                let description = format!("{}...", &movie.overview[..200].trim());
+                ui.label(description);
+            } else {
+                ui.label(&movie.overview);
+            };
+        });
     }
 
     fn add_show_entry(&self, ui: &mut Ui, show: &TVShow) {
@@ -170,11 +185,26 @@ impl MovieApp {
                 println!("season details {:?}", season_details);
             }
         }
-        let mut desc = String::from(&show.name);
-        desc.push('\n');
-        desc.push_str(&show.overview);
-        ui.label(desc);
-        ui.label(show.vote_average.to_string());
+
+        ui.vertical(|ui| {
+            ui.add_space(10.0);
+            ui.heading(&show.name);
+            ui.add_space(8.0);
+            ui.label(format!("Rating: {} / 10", show.vote_average));
+            ui.add_space(4.0);
+            ui.label(format!("First air date: {}", show.first_air_date));
+            ui.add_space(8.0);
+            if show.overview.len() > 200 {
+                // NOTE: This is really bad! We should cashe the output of the format to not call
+                // it every single frame. We should also not take the slice here because we can
+                // panic here since strings are UTF-8 and this take bytes.
+                //                                 vvvvvvvvvvvvvvvvvvvvvv
+                let description = format!("{}...", &show.overview[..200]);
+                ui.label(description);
+            } else {
+                ui.label(&show.overview);
+            };
+        });
     }
 
     fn production_grid(&self, ui: &mut Ui, searched: bool) {
