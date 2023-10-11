@@ -18,7 +18,7 @@ impl ShowDetails {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Season {
-    pub air_date: String,
+    pub air_date: Option<String>,
     pub episode_count: u32,
     pub id: u32,
     pub name: String,
@@ -50,6 +50,6 @@ pub struct Episode {
     episode_number: u32,
     name: String,
     overview: String,
-    runtime: u32,
+    runtime: Option<u32>,
     vote_average: f32,
 }
