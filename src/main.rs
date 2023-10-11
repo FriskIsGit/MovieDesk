@@ -22,9 +22,12 @@ fn main() {
     println!("Running!");
     let config = Config::read_config("config.json");
 
-    let mut options = eframe::NativeOptions::default();
-    options.min_window_size = Some(Vec2::new(30.0, 30.0));
-    options.drag_and_drop_support = true;
+    let options = eframe::NativeOptions {
+        min_window_size: Some(Vec2::new(30.0, 30.0)),
+        drag_and_drop_support: true,
+        ..Default::default()
+    };
+
     let app_creator: AppCreator = Box::new(|cc| {
         egui_extras::install_image_loaders(&cc.egui_ctx);
         let mut window = MovieApp::new(cc, config);

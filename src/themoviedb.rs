@@ -49,7 +49,7 @@ impl TheMovieDB {
         let request = self.new_authorized_get(url);
         println!("Executing request..");
         let result = request.send();
-        if !result.is_ok() {
+        if result.is_err() {
             panic!("Error on sending request");
         }
         let response: Response = result.unwrap();
@@ -79,7 +79,7 @@ impl TheMovieDB {
                 productions.push(Film(movie));
             }
         }
-        return productions;
+        productions
     }
 
     pub fn get_full_poster_url(poster: &str, width: Width) -> String {
@@ -93,7 +93,7 @@ impl TheMovieDB {
         };
         url.push_str(size);
         url.push_str(poster);
-        return url;
+        url
     }
 
     pub fn get_show_details(&self, id: u32) -> ShowDetails {
@@ -103,7 +103,7 @@ impl TheMovieDB {
         let request = self.new_authorized_get(url);
         println!("Executing request..");
         let result = request.send();
-        if !result.is_ok() {
+        if result.is_err() {
             panic!("Error on sending request");
         }
         let json = result.unwrap().text().unwrap();
@@ -119,7 +119,7 @@ impl TheMovieDB {
         let request = self.new_authorized_get(url);
         println!("Executing request..");
         let result = request.send();
-        if !result.is_ok() {
+        if result.is_err() {
             panic!("Error on sending request");
         }
         let json = result.unwrap().text().unwrap();

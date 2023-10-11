@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::production::{Production, TVShow, Movie};
 use crate::themoviedb::{TheMovieDB, Width};
 use eframe::egui::ImageSource::Uri;
-use eframe::egui::{Align, Layout, TopBottomPanel, Ui, Vec2, Visuals, TextStyle, TextBuffer};
+use eframe::egui::{Align, Layout, TopBottomPanel, Ui, Vec2, Visuals};
 use eframe::egui;
 use std::borrow::Cow;
 
@@ -39,15 +39,13 @@ impl MovieApp {
         // );
 
         // Put my font first (highest priority) for proportional text:
-        fonts
-            .families
+        fonts.families
             .entry(egui::FontFamily::Proportional)
             .or_default()
             .insert(0, "my_font".to_owned());
 
         // Put my font as last fallback for monospace:
-        fonts
-            .families
+        fonts.families
             .entry(egui::FontFamily::Monospace)
             .or_default()
             .push("my_font".to_owned());
@@ -59,9 +57,9 @@ impl MovieApp {
 
 impl eframe::App for MovieApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.search_panel(&ctx);
-        self.right_panel(&ctx);
-        self.central_panel(&ctx);
+        self.search_panel(ctx);
+        self.right_panel(ctx);
+        self.central_panel(ctx);
     }
 }
 
@@ -148,9 +146,9 @@ impl MovieApp {
             ui.label(format!("Release date: {}", movie.release_date));
             ui.add_space(8.0);
             if movie.overview.len() > 200 {
-                // NOTE: This is really bad! We should cashe the output of the format to not call
+                // NOTE: This is really bad! We should cache the output of the format to not call
                 // it every single frame. We should also not take the slice here because we can
-                // panic here since strings are UTF-8 and this take bytes.
+                // panic since strings are UTF-8 and this take bytes.
                 //                                 vvvvvvvvvvvvvvvvvvvvvv
                 let description = format!("{}...", &movie.overview[..200].trim());
                 ui.label(description);
@@ -195,9 +193,9 @@ impl MovieApp {
             ui.label(format!("First air date: {}", show.first_air_date));
             ui.add_space(8.0);
             if show.overview.len() > 200 {
-                // NOTE: This is really bad! We should cashe the output of the format to not call
+                // NOTE: This is really bad! We should cache the output of the format to not call
                 // it every single frame. We should also not take the slice here because we can
-                // panic here since strings are UTF-8 and this take bytes.
+                // panic since strings are UTF-8 and this take bytes.
                 //                                 vvvvvvvvvvvvvvvvvvvvvv
                 let description = format!("{}...", &show.overview[..200]);
                 ui.label(description);
@@ -214,7 +212,7 @@ impl MovieApp {
             }
 
             egui::Grid::new("gridder")
-                .max_col_width(180.0)
+                .max_col_width(200.0)
                 .min_row_height(200.0)
                 .show(ui, |ui| {
                     for movie in self.search_productions.iter() {
