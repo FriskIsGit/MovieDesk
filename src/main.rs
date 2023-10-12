@@ -17,6 +17,8 @@ use eframe::AppCreator;
 // TODO: Add exception handling to requests to avoid crashing the app in case something goes wrong
 // TODO: Add scaling to the posters and trim long descriptions, don't artificially stretch the left
 //       panel when production entries are added.
+// TODO: Add a title filtering field 'Your movies' - visible only if there are at least 3 productions
+//       add options like sorting alphabetically or by rating
 
 fn main() {
     println!("Running!");

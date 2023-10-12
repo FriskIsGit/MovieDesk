@@ -20,7 +20,7 @@ pub enum Width {
 }
 
 pub struct TheMovieDB {
-    config: Config,
+    pub config: Config,
     client: Client,
 }
 

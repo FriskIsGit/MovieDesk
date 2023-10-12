@@ -103,6 +103,7 @@ impl MovieApp {
             });
             egui::ScrollArea::vertical().show(ui, |_| {});
         });
+
     }
 
     fn central_panel(&self, ctx: &egui::Context) {
@@ -112,7 +113,7 @@ impl MovieApp {
             ui.separator();
 
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                egui::Grid::new("gridder").show(ui, |ui| {
+                egui::Grid::new("grid_center").show(ui, |ui| {
                     for production in self.user_productions.borrow().iter() {
                         match production {
                             Production::Film(movie) => {
@@ -166,17 +167,31 @@ impl MovieApp {
                 .image(Uri(Cow::from(image_url.as_str())))
                 .interact(egui::Sense::click());
 
-            if poster.clicked() {
-                let mut user_productions = self.user_productions.borrow_mut();
-                let exists = user_productions.iter().any(|prod| {
-                    let Production::Film(user_movie) = prod else { return false };
-                    user_movie.id == movie.id
-                });
+            poster.context_menu(|ui| {
+                if ui.button("Add movie").clicked() {
+                    let mut user_productions = self.user_productions.borrow_mut();
+                    let exists = user_productions.iter().any(|prod| {
+                        let Production::Film(user_movie) = prod else { return false };
+                        user_movie.id == movie.id
+                    });
 
-                if !exists {
-                    user_productions.push(Production::Film(movie.clone()));
+                    if !exists {
+                        user_productions.push(Production::Film(movie.clone()));
+                    }
+                    ui.close_menu()
                 }
-            }
+                //this is slower than I expected
+                if ui.button("Open in imdb").clicked() {
+                    let mut path = String::from("https://www.imdb.com/find/?q=");
+                    path.push_str(&movie.title);
+                    //its buggy open in tmdb instead?
+                    let _ = open::with(path, &self.movie_db.config.browser_name); //does it get encoded or do we need to encode it?
+                }
+
+                if ui.button("Close menu").clicked() {
+                    ui.close_menu();
+                }
+            });
         }
 
         ui.vertical(|ui| {
@@ -215,24 +230,33 @@ impl MovieApp {
                 .image(Uri(Cow::from(image_url.as_str())))
                 .interact(egui::Sense::click());
 
-            if poster.clicked() {
-                let mut user_productions = self.user_productions.borrow_mut();
-                let exists = user_productions.iter().any(|prod| {
-                    let Production::Series(user_show) = prod else { return false };
-                    user_show.id == show.id
-                });
+            poster.context_menu(|ui| {
+                if ui.button("Add show").clicked() {
+                    let mut user_productions = self.user_productions.borrow_mut();
+                    let exists = user_productions.iter().any(|prod| {
+                        let Production::Series(user_show) = prod else { return false };
+                        user_show.id == show.id
+                    });
 
-                if !exists {
-                    user_productions.push(Production::Series(show.clone()));
+                    if !exists {
+                        user_productions.push(Production::Series(show.clone()));
+                    }
+                    ui.close_menu()
+                }
+                //this is slower than I expected
+                if ui.button("Open in imdb").clicked() {
+                    let mut path = String::from("https://www.imdb.com/find/?q=");
+                    path.push_str(&show.name);
+                    //its buggy open in tmdb instead?
+                    let _ = open::with(path, &self.movie_db.config.browser_name); //does it get encoded or do we need to encode it?
+                    ui.close_menu()
                 }
 
-                let show_details = self.movie_db.get_show_details(show.id);
-                let season_details = self.movie_db.get_season_details(
-                    show.id,
-                    show_details.number_of_seasons,
-                );
-                println!("season details {:?}", season_details);
-            }
+                if ui.button("Close menu").clicked() {
+                    ui.close_menu();
+                }
+            });
+
         }
 
         ui.vertical(|ui| {
@@ -262,7 +286,7 @@ impl MovieApp {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
 
-            egui::Grid::new("gridder").max_col_width(200.0).min_row_height(200.0).show(ui, |ui| {
+            egui::Grid::new("grid_left").max_col_width(200.0).min_row_height(200.0).show(ui, |ui| {
                 for movie in self.search_productions.iter() {
                     match movie {
                         Production::Film(movie) => self.add_film_entry(ui, movie),

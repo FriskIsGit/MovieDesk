@@ -1,0 +1,6 @@
+{
+  "api_key": "eyJhbGciOiJIUzI1NiJ9",
+  "include_adult": false,
+  "enable_cache": true,
+  "browser_name": "firefox"
+}
