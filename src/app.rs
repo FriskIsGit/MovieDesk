@@ -58,15 +58,15 @@ impl MovieApp {
 
 impl eframe::App for MovieApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.search_panel(ctx);
+        self.left_panel(ctx);
         self.right_panel(ctx);
         self.central_panel(ctx);
     }
 }
 
 impl MovieApp {
-    fn search_panel(&mut self, ctx: &egui::Context) {
-        let left = egui::SidePanel::left("search_panel");
+    fn left_panel(&mut self, ctx: &egui::Context) {
+        let left = egui::SidePanel::left("left_panel");
         left.resizable(true).show(ctx, |ui| {
             ui.heading("Find a production");
             ui.separator();
@@ -92,18 +92,6 @@ impl MovieApp {
             self.production_grid(ui, search_triggered);
             ui.separator();
         });
-    }
-
-    fn right_panel(&self, ctx: &egui::Context) {
-        let right = egui::SidePanel::right("right_panel");
-        right.show(ctx, |ui| {
-            ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
-                let _ = ui.button("Look at me, I am becoming so wide!");
-                ui.label("TestLabel");
-            });
-            egui::ScrollArea::vertical().show(ui, |_| {});
-        });
-
     }
 
     fn central_panel(&self, ctx: &egui::Context) {
@@ -145,6 +133,39 @@ impl MovieApp {
                 });
             });
         });
+    }
+
+    fn right_panel(&self, ctx: &egui::Context) {
+        let right = egui::SidePanel::right("right_panel");
+        right.show(ctx, |ui| {
+            ui.heading("Selected production");
+            ui.separator();
+
+            // Maybe there could be a dropdown with information about the production here?
+
+            ui.add_space(8.0);
+
+            ui.label("Your rating:");
+            ui.horizontal(|ui| {
+                // Make this a custom button/slider thing where you click on stars to select rating?
+                // ⭐⭐⭐⭐⭐
+                let mut dummy_rating = 8.2;
+                ui.add(egui::DragValue::new(&mut dummy_rating).speed(0.1));
+                ui.label("/ 10")
+            });
+
+            ui.add_space(8.0);
+
+            let mut dummy_notes = "This will be stored per production soon.".to_string();
+            ui.label("Your notes:");
+            ui.text_edit_multiline(&mut dummy_notes);
+            // ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
+            //     let _ = ui.button("Look at me, I am becoming so wide!");
+            //     ui.label("TestLabel");
+            // });
+            // egui::ScrollArea::vertical().show(ui, |_| {});
+        });
+
     }
 
     fn top_panel(&self, ctx: &egui::Context) {
