@@ -5,11 +5,12 @@ use eframe::egui::ImageSource::Uri;
 use eframe::egui::{Align, Layout, TopBottomPanel, Ui, Vec2, Visuals};
 use eframe::egui;
 use std::borrow::Cow;
+use std::cell::RefCell;
 
 pub struct MovieApp {
     show_adult_content: bool,
     search: String,
-    user_productions: Vec<Production>,
+    user_productions: RefCell<Vec<Production>>,
     search_productions: Vec<Production>,
     movie_db: TheMovieDB,
 }
@@ -21,7 +22,7 @@ impl MovieApp {
         Self {
             show_adult_content: config.include_adult,
             search: String::new(),
-            user_productions: vec![],
+            user_productions: RefCell::new(vec![]),
             search_productions: vec![],
             movie_db: TheMovieDB::new(config),
         }
@@ -104,15 +105,48 @@ impl MovieApp {
         });
     }
 
-    fn central_panel(&mut self, ctx: &egui::Context) {
+    fn central_panel(&self, ctx: &egui::Context) {
         let center = egui::CentralPanel::default();
         center.show(ctx, |ui| {
             ui.heading("Your movies!");
             ui.separator();
+
+            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+                egui::Grid::new("gridder").show(ui, |ui| {
+                    for production in self.user_productions.borrow().iter() {
+                        match production {
+                            Production::Film(movie) => {
+                                if movie.poster_path.is_some() {
+                                    let image_url = TheMovieDB::get_full_poster_url(
+                                        movie.poster_path.to_owned().unwrap().as_str(),
+                                        Width::W300,
+                                    );
+
+                                    ui.image(Uri(Cow::from(image_url.as_str())));
+                                    ui.heading(&movie.title);
+                                }
+                            }
+                            Production::Series(show) => {
+                                if show.poster_path.is_some() {
+                                    let image_url = TheMovieDB::get_full_poster_url(
+                                        show.poster_path.to_owned().unwrap().as_str(),
+                                        Width::W300,
+                                    );
+
+                                    ui.image(Uri(Cow::from(image_url.as_str())));
+                                    ui.heading(&show.name);
+                                }
+                            }
+                        }
+
+                        ui.end_row();
+                    }
+                });
+            });
         });
     }
 
-    fn top_panel(&mut self, ctx: &egui::Context) {
+    fn top_panel(&self, ctx: &egui::Context) {
         let left = TopBottomPanel::top("top_panel");
         left.resizable(true).show(ctx, |_| {});
     }
@@ -133,7 +167,15 @@ impl MovieApp {
                 .interact(egui::Sense::click());
 
             if poster.clicked() {
-                println!("CLICKED ON: {}", movie.title);
+                let mut user_productions = self.user_productions.borrow_mut();
+                let exists = user_productions.iter().any(|prod| {
+                    let Production::Film(user_movie) = prod else { return false };
+                    user_movie.id == movie.id
+                });
+
+                if !exists {
+                    user_productions.push(Production::Film(movie.clone()));
+                }
             }
         }
 
@@ -174,7 +216,16 @@ impl MovieApp {
                 .interact(egui::Sense::click());
 
             if poster.clicked() {
-                println!("CLICKED ON: {}", show.name);
+                let mut user_productions = self.user_productions.borrow_mut();
+                let exists = user_productions.iter().any(|prod| {
+                    let Production::Series(user_show) = prod else { return false };
+                    user_show.id == show.id
+                });
+
+                if !exists {
+                    user_productions.push(Production::Series(show.clone()));
+                }
+
                 let show_details = self.movie_db.get_show_details(show.id);
                 let season_details = self.movie_db.get_season_details(
                     show.id,
@@ -205,24 +256,21 @@ impl MovieApp {
         });
     }
 
-    fn production_grid(&self, ui: &mut Ui, searched: bool) {
-        egui::ScrollArea::vertical().show(ui, |ui| {
+    fn production_grid(&mut self, ui: &mut Ui, searched: bool) {
+        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
             if searched {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
 
-            egui::Grid::new("gridder")
-                .max_col_width(200.0)
-                .min_row_height(200.0)
-                .show(ui, |ui| {
-                    for movie in self.search_productions.iter() {
-                        match movie {
-                            Production::Film(movie) => self.add_film_entry(ui, movie),
-                            Production::Series(show) => self.add_show_entry(ui, show),
-                        }
-                        ui.end_row();
+            egui::Grid::new("gridder").max_col_width(200.0).min_row_height(200.0).show(ui, |ui| {
+                for movie in self.search_productions.iter() {
+                    match movie {
+                        Production::Film(movie) => self.add_film_entry(ui, movie),
+                        Production::Series(show) => self.add_show_entry(ui, show),
                     }
-                });
+                    ui.end_row();
+                }
+            });
         });
     }
 }
