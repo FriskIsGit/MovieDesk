@@ -1,7 +1,5 @@
 use crate::config::Config;
-use crate::production::Production::Film;
-use crate::production::Production::Series;
-use crate::production::{Movie, Production, TVShow};
+use crate::production::{Movie, Production, Series};
 use crate::show_details::{SeasonDetails, ShowDetails};
 use reqwest::blocking::{Client, RequestBuilder, Response};
 use serde_json::Value;
@@ -70,13 +68,13 @@ impl TheMovieDB {
         for prod_obj in list {
             let media_type = prod_obj["media_type"].to_owned();
             if media_type == "tv" {
-                let show = TVShow::parse(prod_obj.to_string().as_str());
+                let show = Series::parse(prod_obj.to_string().as_str());
                 println!("{:?}", show);
-                productions.push(Series(show));
+                productions.push(Production::Series(show));
             } else if media_type == "movie" {
                 let movie = Movie::parse(prod_obj.to_string().as_str());
                 println!("{:?}", movie);
-                productions.push(Film(movie));
+                productions.push(Production::Movie(movie));
             }
         }
         productions

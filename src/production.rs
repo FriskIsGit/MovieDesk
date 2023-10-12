@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TVShow {
+pub struct Series {
     pub id: u32,
     pub name: String,
     pub original_language: String,
@@ -13,8 +13,8 @@ pub struct TVShow {
     pub adult: bool,
 }
 
-impl TVShow {
-    pub fn parse(json: &str) -> TVShow {
+impl Series {
+    pub fn parse(json: &str) -> Series {
         serde_json::from_str(json).expect("Failed to deserialize a TVShow object")
     }
 }
@@ -39,6 +39,6 @@ impl Movie {
 }
 
 pub enum Production {
-    Film(Movie),
-    Series(TVShow),
+    Movie(Movie),
+    Series(Series),
 }

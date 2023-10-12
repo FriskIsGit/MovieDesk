@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::production::{Production, TVShow, Movie};
+use crate::production::{Production, Series, Movie};
 use crate::themoviedb::{TheMovieDB, Width};
 use eframe::egui::ImageSource::Uri;
 use eframe::egui::{Align, Layout, TopBottomPanel, Ui, Vec2, Visuals};
@@ -116,7 +116,7 @@ impl MovieApp {
                 egui::Grid::new("grid_center").show(ui, |ui| {
                     for production in self.user_productions.borrow().iter() {
                         match production {
-                            Production::Film(movie) => {
+                            Production::Movie(movie) => {
                                 if movie.poster_path.is_some() {
                                     let image_url = TheMovieDB::get_full_poster_url(
                                         movie.poster_path.to_owned().unwrap().as_str(),
@@ -171,12 +171,12 @@ impl MovieApp {
                 if ui.button("Add movie").clicked() {
                     let mut user_productions = self.user_productions.borrow_mut();
                     let exists = user_productions.iter().any(|prod| {
-                        let Production::Film(user_movie) = prod else { return false };
+                        let Production::Movie(user_movie) = prod else { return false };
                         user_movie.id == movie.id
                     });
 
                     if !exists {
-                        user_productions.push(Production::Film(movie.clone()));
+                        user_productions.push(Production::Movie(movie.clone()));
                     }
                     ui.close_menu()
                 }
@@ -215,7 +215,7 @@ impl MovieApp {
         });
     }
 
-    fn add_show_entry(&self, ui: &mut Ui, show: &TVShow) {
+    fn add_show_entry(&self, ui: &mut Ui, show: &Series) {
         if show.adult && !self.show_adult_content {
             return;
         }
@@ -289,7 +289,7 @@ impl MovieApp {
             egui::Grid::new("grid_left").max_col_width(200.0).min_row_height(200.0).show(ui, |ui| {
                 for movie in self.search_productions.iter() {
                     match movie {
-                        Production::Film(movie) => self.add_film_entry(ui, movie),
+                        Production::Movie(movie) => self.add_film_entry(ui, movie),
                         Production::Series(show) => self.add_show_entry(ui, show),
                     }
                     ui.end_row();
