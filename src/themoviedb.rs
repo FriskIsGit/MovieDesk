@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::production::{Movie, Production, Series};
 use crate::series_details::{SeasonDetails, SeriesDetails};
-use reqwest::blocking::{Client, RequestBuilder, Response};
+use ureq;
 use serde_json::Value;
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
@@ -19,25 +19,22 @@ pub enum Width {
 
 pub struct TheMovieDB {
     pub config: Config,
-    client: Client,
+    // client: Client,
 }
 
 impl TheMovieDB {
     pub fn new(config: Config) -> Self {
         Self {
             config,
-            client: Client::new(),
+            // client: Client::new(),
         }
     }
 
-    fn new_authorized_get(&self, url: String) -> RequestBuilder {
-        self.client
-            .get(url)
-            .header("Accept", "application/json")
-            .header(
-                "Authorization",
-                format!("Bearer {}", self.config.api_key.to_owned()),
-            )
+    fn new_authorized_get(&self, url: String) -> ureq::Request {
+        let request = ureq::get(&url)
+            .set("Accept", "application/json")
+            .set("Authorization", &format!("Bearer {}", &self.config.api_key));
+        request
     }
 
     pub fn search_production(&self, query: &str) -> Vec<Production> {
@@ -45,18 +42,20 @@ impl TheMovieDB {
         url.push_str(format!("?query={}&include_adult={}", query, true).as_str());
 
         let request = self.new_authorized_get(url);
+
         println!("Executing request..");
-        let result = request.send();
-        if result.is_err() {
+        let Ok(response) = request.call() else {
             panic!("Error on sending request");
-        }
-        let response: Response = result.unwrap();
+        };
+
         let status = response.status();
-        if !status.is_success() {
+        if status != 200 {
             println!("status: {}", status)
         }
-        let json_response = response.text().unwrap().to_owned();
+
+        let json_response = response.into_string().unwrap().to_owned();
         println!("content: {}", json_response);
+
         let payload: Value = serde_json::from_str(json_response.as_str()).unwrap();
         let arr: Value = payload["results"].to_owned();
         if !arr.is_array() {
@@ -100,11 +99,12 @@ impl TheMovieDB {
 
         let request = self.new_authorized_get(url);
         println!("Executing request..");
-        let result = request.send();
-        if result.is_err() {
+
+        let Ok(response) = request.call() else {
             panic!("Error on sending request");
-        }
-        let json = result.unwrap().text().unwrap();
+        };
+
+        let json = response.into_string().unwrap();
         println!("series_details_json: {}", json);
         SeriesDetails::parse(json.as_str())
     }
@@ -115,25 +115,26 @@ impl TheMovieDB {
         url.push_str("/season/");
         url.push_str(season_number.to_string().as_str());
         let request = self.new_authorized_get(url);
+
         println!("Executing request..");
-        let result = request.send();
-        if result.is_err() {
+        let Ok(response) = request.call() else {
             panic!("Error on sending request");
-        }
-        let json = result.unwrap().text().unwrap();
+        };
+
+        let json = response.into_string().unwrap();
         println!("season_details_json: {}", json);
         SeasonDetails::parse(json.as_str())
     }
 
     pub fn download_resource(&self, resource_url: &str) -> Vec<u8> {
-        let request = self.client.get(resource_url);
+        let request = ureq::get(resource_url);
         println!("Executing request..");
-        let result = request.send();
-        if result.is_err() {
+        let Ok(response) = request.call() else {
             panic!("Error on sending request");
-        }
+        };
+
         let mut buf = Vec::with_capacity(4096);
-        let bytes_written = result.unwrap().copy_to(&mut buf).unwrap();
+        let bytes_written = response.into_reader().read_to_end(&mut buf).unwrap();
         println!("bytes written {}", bytes_written);
         return buf;
     }

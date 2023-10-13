@@ -1,9 +1,11 @@
 use crate::config::Config;
 use crate::production::{Production, Series, Movie, UserProduction};
 use crate::themoviedb::{TheMovieDB, Width};
-use eframe::egui::ImageSource::Uri;
-use eframe::egui::{Align, TopBottomPanel, Ui, Vec2, Visuals, Layout};
-use eframe::egui;
+
+use egui;
+use egui::{Align, TopBottomPanel, Ui, Vec2, Visuals, Layout};
+use egui::ImageSource::Uri;
+
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fs::File;
@@ -24,9 +26,9 @@ pub struct MovieApp {
 }
 
 impl MovieApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, config: Config) -> Self {
+    pub fn new(ctx: &egui::Context, config: Config) -> Self {
         let visuals = Visuals::dark();
-        cc.egui_ctx.set_visuals(visuals);
+        ctx.set_visuals(visuals);
 
         Self {
             search: String::new(),
@@ -66,10 +68,8 @@ impl MovieApp {
         // Tell egui to use these fonts:
         // ctx.set_fonts(fonts);
     }
-}
 
-impl eframe::App for MovieApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    pub fn update(&mut self, ctx: &egui::Context) {
         // Implement dynamic scale changing?
         ctx.set_pixels_per_point(1.66);
 
