@@ -42,3 +42,9 @@ pub enum Production {
     Movie(Movie),
     Series(Series),
 }
+
+pub struct UserProduction {
+    pub production: Production,
+    pub user_rating: f32,
+    pub user_note: String,
+}
