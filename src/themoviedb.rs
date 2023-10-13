@@ -1,13 +1,11 @@
-use std::fs::File;
-use std::ops::Deref;
 use crate::config::Config;
 use crate::production::{Movie, Production, Series};
-use crate::show_details::{SeasonDetails, ShowDetails};
+use crate::series_details::{SeasonDetails, SeriesDetails};
 use reqwest::blocking::{Client, RequestBuilder, Response};
 use serde_json::Value;
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
-const SHOW_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
+const SERIES_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
 const IMAGE_URL: &str = "https://image.tmdb.org/t/p/";
 
 #[allow(dead_code)]
@@ -70,9 +68,9 @@ impl TheMovieDB {
         for prod_obj in list {
             let media_type = prod_obj["media_type"].to_owned();
             if media_type == "tv" {
-                let show = Series::parse(prod_obj.to_string().as_str());
-                println!("{:?}", show);
-                productions.push(Production::Series(show));
+                let series = Series::parse(prod_obj.to_string().as_str());
+                println!("{:?}", series);
+                productions.push(Production::Series(series));
             } else if media_type == "movie" {
                 let movie = Movie::parse(prod_obj.to_string().as_str());
                 println!("{:?}", movie);
@@ -96,8 +94,8 @@ impl TheMovieDB {
         url
     }
 
-    pub fn get_show_details(&self, id: u32) -> ShowDetails {
-        let mut url = String::from(SHOW_DETAILS_URL);
+    pub fn get_series_details(&self, id: u32) -> SeriesDetails {
+        let mut url = String::from(SERIES_DETAILS_URL);
         url.push_str(id.to_string().as_str());
 
         let request = self.new_authorized_get(url);
@@ -107,13 +105,13 @@ impl TheMovieDB {
             panic!("Error on sending request");
         }
         let json = result.unwrap().text().unwrap();
-        println!("show_details_json: {}", json);
-        ShowDetails::parse(json.as_str())
+        println!("series_details_json: {}", json);
+        SeriesDetails::parse(json.as_str())
     }
 
-    pub fn get_season_details(&self, show_id: u32, season_number: u32) -> SeasonDetails {
-        let mut url = String::from(SHOW_DETAILS_URL);
-        url.push_str(show_id.to_string().as_str());
+    pub fn get_season_details(&self, series_id: u32, season_number: u32) -> SeasonDetails {
+        let mut url = String::from(SERIES_DETAILS_URL);
+        url.push_str(series_id.to_string().as_str());
         url.push_str("/season/");
         url.push_str(season_number.to_string().as_str());
         let request = self.new_authorized_get(url);

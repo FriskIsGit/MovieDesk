@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-//we need this struct in order to know how many seasons a show has (are unreleased seasons included?)
-pub struct ShowDetails {
+//we need this struct in order to know how many seasons a series has (are unreleased seasons included?)
+pub struct SeriesDetails {
     pub number_of_seasons: u32,
     pub number_of_episodes: u32,
     pub status: String, //is finished?
@@ -10,9 +10,9 @@ pub struct ShowDetails {
     pub seasons: Vec<Season>,
 }
 
-impl ShowDetails {
-    pub fn parse(json: &str) -> ShowDetails {
-        serde_json::from_str(json).expect("Failed to deserialize a ShowDetails object")
+impl SeriesDetails {
+    pub fn parse(json: &str) -> SeriesDetails {
+        serde_json::from_str(json).expect("Failed to deserialize a SeriesDetails object")
     }
 }
 
@@ -30,7 +30,7 @@ pub struct Season {
 
 //--------------------------------------------------------------------------------------------------
 #[derive(Debug, Serialize, Deserialize)]
-//represents episodes of one season, not the entire show (shouldn't include what Season already has)
+//represents episodes of one season, not the entire series (shouldn't include what Season already has)
 pub struct SeasonDetails {
     pub id: u32,
     pub season_number: u32,

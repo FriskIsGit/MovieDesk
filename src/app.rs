@@ -70,6 +70,9 @@ impl MovieApp {
 
 impl eframe::App for MovieApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Implement dynamic scale changing?
+        ctx.set_pixels_per_point(1.66);
+
         self.top_panel(ctx);
         self.left_panel(ctx);
         self.central_panel(ctx);
@@ -149,15 +152,15 @@ impl MovieApp {
                                     ui.heading(&movie.title);
                                 }
                             }
-                            Production::Series(show) => {
-                                if show.poster_path.is_some() {
+                            Production::Series(series) => {
+                                if series.poster_path.is_some() {
                                     let image_url = TheMovieDB::get_full_poster_url(
-                                        show.poster_path.to_owned().unwrap().as_str(),
+                                        series.poster_path.to_owned().unwrap().as_str(),
                                         Width::W300,
                                     );
 
                                     ui.image(Uri(Cow::from(image_url.as_str())));
-                                    ui.heading(&show.name);
+                                    ui.heading(&series.name);
                                 }
                             }
                         }
@@ -283,15 +286,13 @@ impl MovieApp {
                         let _ = open::with_in_background(path, browser);
                     }
 
-                    if ui.button("Download poster").clicked(){
-                        if movie.poster_path.is_some() {
-                            let poster = movie.poster_path.as_ref().unwrap().as_str();
-                            let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
-                            let bytes = self.movie_db.download_resource(resource.as_str());
-                            let mut file = File::create(&poster[1..]).expect("Unable to create file");
-                            // Write a slice of bytes to the file
-                            file.write_all(&bytes).unwrap();
-                        }
+                    if ui.button("Download poster").clicked() && movie.poster_path.is_some() {
+                        let poster = movie.poster_path.as_ref().unwrap().as_str();
+                        let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
+                        let bytes = self.movie_db.download_resource(resource.as_str());
+                        let mut file = File::create(&poster[1..]).expect("Unable to create file");
+                        // Write a slice of bytes to the file
+                        file.write_all(&bytes).unwrap();
                     }
 
                     if ui.button("Close menu").clicked() {
@@ -340,11 +341,11 @@ impl MovieApp {
                     .interact(egui::Sense::click());
 
                 poster.context_menu(|ui| {
-                    if ui.button("Add show").clicked() {
+                    if ui.button("Add series").clicked() {
                         let mut user_productions = self.user_productions.borrow_mut();
                         let exists = user_productions.iter().any(|entry| {
-                            let Production::Series(user_show) = &entry.production else { return false };
-                            user_show.id == series.id
+                            let Production::Series(user_series) = &entry.production else { return false };
+                            user_series.id == series.id
                         });
 
                         if !exists {
@@ -372,15 +373,13 @@ impl MovieApp {
                         let _ = open::with_in_background(path, browser);
                     }
 
-                    if ui.button("Download poster").clicked(){
-                        if series.poster_path.is_some() {
-                            let poster = series.poster_path.as_ref().unwrap().as_str();
-                            let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
-                            let bytes = self.movie_db.download_resource(resource.as_str());
-                            let mut file = File::create(&poster[1..]).expect("Unable to create file");
-                            // Write a slice of bytes to the file
-                            file.write_all(&bytes).unwrap();
-                        }
+                    if ui.button("Download poster").clicked() && series.poster_path.is_some() {
+                        let poster = series.poster_path.as_ref().unwrap().as_str();
+                        let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
+                        let bytes = self.movie_db.download_resource(resource.as_str());
+                        let mut file = File::create(&poster[1..]).expect("Unable to create file");
+                        // Write a slice of bytes to the file
+                        file.write_all(&bytes).unwrap();
                     }
 
                     if ui.button("Close menu").clicked() {

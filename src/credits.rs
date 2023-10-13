@@ -6,6 +6,6 @@ pub struct MovieCredits {}
 impl MovieCredits {}
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ShowCredits {}
+pub struct SeriesCredits {}
 
-impl ShowCredits {}
+impl SeriesCredits {}

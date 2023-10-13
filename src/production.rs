@@ -15,7 +15,7 @@ pub struct Series {
 
 impl Series {
     pub fn parse(json: &str) -> Series {
-        serde_json::from_str(json).expect("Failed to deserialize a TVShow object")
+        serde_json::from_str(json).expect("Failed to deserialize a Series object")
     }
 }
 

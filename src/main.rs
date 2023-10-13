@@ -2,7 +2,7 @@ mod app;
 mod config;
 mod credits;
 mod production;
-mod show_details;
+mod series_details;
 mod themoviedb;
 
 use crate::app::MovieApp;
