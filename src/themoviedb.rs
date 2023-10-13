@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::ops::Deref;
 use crate::config::Config;
 use crate::production::{Movie, Production, Series};
 use crate::show_details::{SeasonDetails, ShowDetails};
@@ -123,5 +125,18 @@ impl TheMovieDB {
         let json = result.unwrap().text().unwrap();
         println!("season_details_json: {}", json);
         SeasonDetails::parse(json.as_str())
+    }
+
+    pub fn download_resource(&self, resource_url: &str) -> Vec<u8> {
+        let request = self.client.get(resource_url);
+        println!("Executing request..");
+        let result = request.send();
+        if result.is_err() {
+            panic!("Error on sending request");
+        }
+        let mut buf = Vec::with_capacity(4096);
+        let bytes_written = result.unwrap().copy_to(&mut buf).unwrap();
+        println!("bytes written {}", bytes_written);
+        return buf;
     }
 }

@@ -6,6 +6,8 @@ use eframe::egui::{Align, TopBottomPanel, Ui, Vec2, Visuals, Layout};
 use eframe::egui;
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::fs::File;
+use std::io::Write;
 
 pub struct MovieApp {
     // Left panel
@@ -281,6 +283,17 @@ impl MovieApp {
                         let _ = open::with_in_background(path, browser);
                     }
 
+                    if ui.button("Download poster").clicked(){
+                        if movie.poster_path.is_some() {
+                            let poster = movie.poster_path.as_ref().unwrap().as_str();
+                            let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
+                            let bytes = self.movie_db.download_resource(resource.as_str());
+                            let mut file = File::create(&poster[1..]).expect("Unable to create file");
+                            // Write a slice of bytes to the file
+                            file.write_all(&bytes).unwrap();
+                        }
+                    }
+
                     if ui.button("Close menu").clicked() {
                         ui.close_menu();
                     }
@@ -357,6 +370,17 @@ impl MovieApp {
                         let browser = &self.movie_db.config.browser_name;
                         //its buggy open in tmdb instead?
                         let _ = open::with_in_background(path, browser);
+                    }
+
+                    if ui.button("Download poster").clicked(){
+                        if series.poster_path.is_some() {
+                            let poster = series.poster_path.as_ref().unwrap().as_str();
+                            let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
+                            let bytes = self.movie_db.download_resource(resource.as_str());
+                            let mut file = File::create(&poster[1..]).expect("Unable to create file");
+                            // Write a slice of bytes to the file
+                            file.write_all(&bytes).unwrap();
+                        }
                     }
 
                     if ui.button("Close menu").clicked() {
