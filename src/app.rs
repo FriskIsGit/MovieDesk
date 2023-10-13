@@ -75,6 +75,9 @@ impl eframe::App for MovieApp {
     }
 }
 
+const MOVIE_URL: &str = "https://www.themoviedb.org/movie/";
+const TV_URL: &str = "https://www.themoviedb.org/tv/";
+
 impl MovieApp {
     fn left_panel(&mut self, ctx: &egui::Context) {
         let left = egui::SidePanel::left("left_panel");
@@ -245,7 +248,6 @@ impl MovieApp {
                 let image = egui::Image::new(Uri(image_url.into()));
                 let poster = ui.add_sized([60.0, 100.0], image)
                     .interact(egui::Sense::click());
-
                 poster.context_menu(|ui| {
                     if ui.button("Add movie").clicked() {
                         let mut user_productions = self.user_productions.borrow_mut();
@@ -265,12 +267,17 @@ impl MovieApp {
                         ui.close_menu()
                     }
 
+                    if ui.button("Open in tmdb").clicked() {
+                        let mut path = String::from(MOVIE_URL);
+                        path.push_str(movie.id.to_string().as_str());
+                        let browser = &self.movie_db.config.browser_name;
+                        let _ = open::with_in_background(path, browser);
+                    }
+
                     if ui.button("Open in imdb").clicked() {
                         let path = format!("https://www.imdb.com/find/?q={}", movie.title);
                         let browser = &self.movie_db.config.browser_name;
-
-                        //its buggy open in tmdb instead?
-                        //does it get encoded or do we need to encode it?
+                        //use External IDs (movie endpoint)
                         let _ = open::with_in_background(path, browser);
                     }
 
@@ -302,6 +309,8 @@ impl MovieApp {
         } else {
             ui.label(&movie.overview);
         };
+
+        ui.separator();
     }
 
     fn draw_series_entry(&self, ui: &mut Ui, series: &Series) {
@@ -336,12 +345,17 @@ impl MovieApp {
                         ui.close_menu()
                     }
 
+                    if ui.button("Open in tmdb").clicked() {
+                        let mut path = String::from(TV_URL);
+                        path.push_str(series.id.to_string().as_str());
+                        let browser = &self.movie_db.config.browser_name;
+                        let _ = open::with_in_background(path, browser);
+                    }
+
                     if ui.button("Open in imdb").clicked() {
                         let path = format!("https://www.imdb.com/find/?q={}", series.name);
                         let browser = &self.movie_db.config.browser_name;
-
                         //its buggy open in tmdb instead?
-                        //does it get encoded or do we need to encode it?
                         let _ = open::with_in_background(path, browser);
                     }
 
@@ -373,6 +387,8 @@ impl MovieApp {
         } else {
             ui.label(&series.overview);
         };
+
+        ui.separator();
     }
 
     fn production_grid(&mut self, ui: &mut Ui, searched: bool) {
@@ -386,7 +402,6 @@ impl MovieApp {
                     Production::Movie(movie) => self.draw_movie_entry(ui, movie),
                     Production::Series(series) => self.draw_series_entry(ui, series),
                 }
-                ui.separator();
             }
         });
     }
