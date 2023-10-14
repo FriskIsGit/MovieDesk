@@ -69,7 +69,7 @@ impl MovieApp {
         // ctx.set_fonts(fonts);
     }
 
-    pub fn update(&mut self, ctx: &egui::Context) {
+    pub fn render(&mut self, ctx: &egui::Context) {
         // Implement dynamic scale changing?
         ctx.set_pixels_per_point(1.66);
 

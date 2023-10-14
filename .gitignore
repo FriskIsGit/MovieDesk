@@ -2,4 +2,4 @@
 Cargo.lock
 /target
 *.iml
-config.json
+res/config.json

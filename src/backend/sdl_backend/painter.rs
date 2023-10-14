@@ -1,6 +1,5 @@
 extern crate gl;
 extern crate sdl2;
-use crate::ShaderVersion;
 use ahash::AHashMap;
 use core::mem;
 use core::ptr;
@@ -11,6 +10,8 @@ use egui::{
 };
 use gl::types::{GLchar, GLenum, GLint, GLsizeiptr, GLsync, GLuint};
 use std::ffi::CString;
+
+use super::ShaderVersion;
 
 #[derive(Default)]
 struct Texture {
