@@ -271,6 +271,10 @@ impl MovieApp {
                         }
                         ui.close_menu()
                     }
+                    //change name?: xpanded view, about, more, view seasons, view more, view details,
+                    if ui.button("More details").clicked(){
+                        MovieApp::expanded_movie_view(ui, movie);
+                    }
 
                     if ui.button("Open in tmdb").clicked() {
                         let mut path = String::from(MOVIE_URL);
@@ -359,6 +363,11 @@ impl MovieApp {
                         ui.close_menu()
                     }
 
+                    if ui.button("More series details").clicked(){
+                        MovieApp::expanded_series_view(ui, series);
+                        ui.close_menu();
+                    }
+
                     if ui.button("Open in tmdb").clicked() {
                         let mut path = String::from(TV_URL);
                         path.push_str(series.id.to_string().as_str());
@@ -426,6 +435,17 @@ impl MovieApp {
                     Production::Series(series) => self.draw_series_entry(ui, series),
                 }
             }
+        });
+    }
+
+    fn expanded_series_view(ui: &mut Ui, series: &Series) {
+        egui::Window::new(&series.name).show(ui.ctx(), |ui| {
+            ui.label("Hello series!");
+        });
+    }
+    fn expanded_movie_view(ui: &mut Ui, movie: &Movie) {
+        egui::Window::new(&movie.title).show(ui.ctx(), |ui| {
+            ui.label("Hello movie!");
         });
     }
 }

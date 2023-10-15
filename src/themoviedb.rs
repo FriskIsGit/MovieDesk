@@ -1,8 +1,10 @@
+use std::time::Duration;
 use crate::config::Config;
 use crate::production::{Movie, Production, Series};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use ureq;
 use serde_json::Value;
+use ureq::{Agent, AgentBuilder};
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
 const SERIES_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
@@ -19,19 +21,22 @@ pub enum Width {
 
 pub struct TheMovieDB {
     pub config: Config,
-    // client: Client,
+    agent: Agent,
+    // cache object outputs to avoid making multiple requests for the same data
 }
 
 impl TheMovieDB {
     pub fn new(config: Config) -> Self {
         Self {
             config,
-            // client: Client::new(),
+            agent: AgentBuilder::new()
+                .timeout(Duration::from_secs(15))
+                .build()
         }
     }
 
     fn new_authorized_get(&self, url: String) -> ureq::Request {
-        let request = ureq::get(&url)
+        let request = self.agent.get(&url)
             .set("Accept", "application/json")
             .set("Authorization", &format!("Bearer {}", &self.config.api_key));
         request
@@ -127,7 +132,7 @@ impl TheMovieDB {
     }
 
     pub fn download_resource(&self, resource_url: &str) -> Vec<u8> {
-        let request = ureq::get(resource_url);
+        let request = self.agent.get(resource_url);
         println!("Executing request..");
         let Ok(response) = request.call() else {
             panic!("Error on sending request");
