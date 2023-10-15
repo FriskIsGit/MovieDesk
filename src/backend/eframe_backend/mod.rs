@@ -6,7 +6,6 @@ use egui::Vec2;
 
 impl eframe::App for MovieApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.set_pixels_per_point(1.66);
         self.render(ctx);
     }
 }

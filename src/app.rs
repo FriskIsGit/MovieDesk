@@ -239,11 +239,7 @@ impl MovieApp {
         top.resizable(true).show(ctx, |_| {});
     }
 
-    fn draw_movie_entry(&mut self, ui: &mut Ui, index: usize) {
-        let Production::Movie(movie) = &self.search_productions[index] else {
-            return;
-        };
-
+    fn draw_movie_entry(&mut self, ui: &mut Ui, movie: &Movie) {
         if movie.adult && !self.show_adult_content {
             return;
         }
@@ -333,11 +329,7 @@ impl MovieApp {
         ui.separator();
     }
 
-    fn draw_series_entry(&mut self, ui: &mut Ui, index: usize) {
-        let Production::Series(series) = &self.search_productions[index] else {
-            return;
-        };
-
+    fn draw_series_entry(&mut self, ui: &mut Ui, series: &Series) {
         if series.adult && !self.show_adult_content {
             return;
         }
@@ -435,10 +427,15 @@ impl MovieApp {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
 
-            for i in 0..self.search_productions.len() {
-                self.draw_movie_entry(ui, i);
-                self.draw_series_entry(ui, i);
+            // Small workaround for interprocedural conflicts.
+            let mut productions = std::mem::take(&mut self.search_productions);
+            for prod in productions.iter() {
+                match prod {
+                    Production::Movie(movie) => self.draw_movie_entry(ui, movie),
+                    Production::Series(series) => self.draw_series_entry(ui, series),
+                }
             }
+            std::mem::swap(&mut productions, &mut self.search_productions);
         });
     }
 
