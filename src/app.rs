@@ -6,8 +6,6 @@ use egui;
 use egui::{Align, TopBottomPanel, Ui, Vec2, Visuals, Layout};
 use egui::ImageSource::Uri;
 
-use std::borrow::Cow;
-use std::cell::RefCell;
 use std::fs::File;
 use std::io::Write;
 
@@ -18,7 +16,7 @@ pub struct MovieApp {
     search_productions: Vec<Production>,
 
     // Right and center panel
-    user_productions: RefCell<Vec<UserProduction>>,
+    user_productions: Vec<UserProduction>,
     selected_user_production: Option<usize>,
 
     // Not a part of the layout
@@ -35,7 +33,7 @@ impl MovieApp {
             show_adult_content: config.include_adult,
             search_productions: Vec::new(),
 
-            user_productions: RefCell::new(Vec::new()),
+            user_productions: Vec::new(),
             selected_user_production: None,
 
             movie_db: TheMovieDB::new(config),
@@ -124,7 +122,7 @@ impl MovieApp {
 
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                 egui::Grid::new("grid_center").show(ui, |ui| {
-                    let entries = self.user_productions.borrow();
+                    let entries = &self.user_productions;
                     for (i, entry) in entries.iter().enumerate() {
                         // NOTE: This is a placeholder. You should be able to click on an entire
                         //       grid entry and then the whole thing should be highlighted.
@@ -148,7 +146,7 @@ impl MovieApp {
                                         Width::W300,
                                     );
 
-                                    ui.image(Uri(Cow::from(image_url.as_str())));
+                                    ui.image(Uri(image_url.into()));
                                     ui.heading(&movie.title);
                                 }
                             }
@@ -159,7 +157,7 @@ impl MovieApp {
                                         Width::W300,
                                     );
 
-                                    ui.image(Uri(Cow::from(image_url.as_str())));
+                                    ui.image(Uri(image_url.into()));
                                     ui.heading(&series.name);
                                 }
                             }
@@ -171,7 +169,7 @@ impl MovieApp {
         });
     }
 
-    fn right_panel(&self, ctx: &egui::Context) {
+    fn right_panel(&mut self, ctx: &egui::Context) {
         let right = egui::SidePanel::right("right_panel");
         right.show(ctx, |ui| {
             ui.heading("Selected production");
@@ -183,8 +181,8 @@ impl MovieApp {
                 return;
             };
             
-            let mut user_productions = self.user_productions.borrow_mut();
-            let Some(entry) = user_productions.get_mut(index) else {
+            // let mut user_productions = self.user_productions.borrow_mut();
+            let Some(entry) = self.user_productions.get_mut(index) else {
                 ui.add_space(10.0);
                 ui.label("Currently nothing is selected ._.");
                 return;
@@ -241,7 +239,11 @@ impl MovieApp {
         top.resizable(true).show(ctx, |_| {});
     }
 
-    fn draw_movie_entry(&self, ui: &mut Ui, movie: &Movie) {
+    fn draw_movie_entry(&mut self, ui: &mut Ui, index: usize) {
+        let Production::Movie(movie) = &self.search_productions[index] else {
+            return;
+        };
+
         if movie.adult && !self.show_adult_content {
             return;
         }
@@ -255,8 +257,8 @@ impl MovieApp {
                     .interact(egui::Sense::click());
                 poster.context_menu(|ui| {
                     if ui.button("Add movie").clicked() {
-                        let mut user_productions = self.user_productions.borrow_mut();
-                        let exists = user_productions.iter().any(|entry| {
+                        // let mut user_productions = self.user_productions.borrow_mut();
+                        let exists = self.user_productions.iter().any(|entry| {
                             let Production::Movie(user_movie) = &entry.production else { return false };
                             user_movie.id == movie.id
                         });
@@ -267,7 +269,7 @@ impl MovieApp {
                                 user_note: String::new(),
                                 user_rating: 0.0,
                             };
-                            user_productions.push(new_data);
+                            self.user_productions.push(new_data);
                         }
                         ui.close_menu()
                     }
@@ -331,7 +333,11 @@ impl MovieApp {
         ui.separator();
     }
 
-    fn draw_series_entry(&self, ui: &mut Ui, series: &Series) {
+    fn draw_series_entry(&mut self, ui: &mut Ui, index: usize) {
+        let Production::Series(series) = &self.search_productions[index] else {
+            return;
+        };
+
         if series.adult && !self.show_adult_content {
             return;
         }
@@ -346,8 +352,8 @@ impl MovieApp {
 
                 poster.context_menu(|ui| {
                     if ui.button("Add series").clicked() {
-                        let mut user_productions = self.user_productions.borrow_mut();
-                        let exists = user_productions.iter().any(|entry| {
+                        // let mut user_productions = self.user_productions.borrow_mut();
+                        let exists = self.user_productions.iter().any(|entry| {
                             let Production::Series(user_series) = &entry.production else { return false };
                             user_series.id == series.id
                         });
@@ -358,7 +364,7 @@ impl MovieApp {
                                 user_note: String::new(),
                                 user_rating: 0.0,
                             };
-                            user_productions.push(new_data);
+                            self.user_productions.push(new_data);
                         }
                         ui.close_menu()
                     }
@@ -429,11 +435,9 @@ impl MovieApp {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
 
-            for movie in self.search_productions.iter() {
-                match movie {
-                    Production::Movie(movie) => self.draw_movie_entry(ui, movie),
-                    Production::Series(series) => self.draw_series_entry(ui, series),
-                }
+            for i in 0..self.search_productions.len() {
+                self.draw_movie_entry(ui, i);
+                self.draw_series_entry(ui, i);
             }
         });
     }
