@@ -19,6 +19,9 @@ pub struct MovieApp {
     user_productions: Vec<UserProduction>,
     selected_user_production: Option<usize>,
 
+    // Expanded view state
+    expanded_view: ExpandedState,
+
     // Not a part of the layout
     movie_db: TheMovieDB,
 }
@@ -35,6 +38,8 @@ impl MovieApp {
 
             user_productions: Vec::new(),
             selected_user_production: None,
+
+            expanded_view: ExpandedState::new(),
 
             movie_db: TheMovieDB::new(config),
         }
@@ -75,6 +80,9 @@ impl MovieApp {
         self.left_panel(ctx);
         self.central_panel(ctx);
         self.right_panel(ctx);
+
+        self.expanded_view.expanded_series_window(ctx);
+        self.expanded_view.expanded_movie_window(ctx);
     }
 }
 
@@ -271,7 +279,9 @@ impl MovieApp {
                     }
                     //change name?: xpanded view, about, more, view seasons, view more, view details,
                     if ui.button("More details").clicked(){
-                        MovieApp::expanded_movie_view(ui, movie);
+                        self.expanded_view.expanded_user_movie = Some(movie.clone());
+                        self.expanded_view.expand_movie = true;
+                        ui.close_menu();
                     }
 
                     if ui.button("Open in tmdb").clicked() {
@@ -362,7 +372,8 @@ impl MovieApp {
                     }
 
                     if ui.button("More series details").clicked(){
-                        MovieApp::expanded_series_view(ui, series);
+                        self.expanded_view.expanded_user_series = Some(series.clone());
+                        self.expanded_view.expand_series = true;
                         ui.close_menu();
                     }
 
@@ -439,13 +450,46 @@ impl MovieApp {
         });
     }
 
-    fn expanded_series_view(ui: &mut Ui, series: &Series) {
-        egui::Window::new(&series.name).show(ui.ctx(), |ui| {
+}
+
+struct ExpandedState {
+    expand_series: bool,
+    expand_movie: bool,
+    expanded_user_series: Option<Series>,
+    expanded_user_movie: Option<Movie>,
+}
+impl ExpandedState{
+    pub fn new() -> Self{
+        Self{
+            expand_series: false,
+            expand_movie: false,
+            expanded_user_series: None,
+            expanded_user_movie: None,
+        }
+    }
+    fn expanded_series_window(&mut self, ctx: &egui::Context) {
+        if !self.expand_series || self.expanded_user_series.is_none() {
+            return
+        }
+        let series = &self.expanded_user_series.as_ref().unwrap();
+        let window = egui::Window::new(&series.name)
+            .open(&mut self.expand_series)
+            .resizable(true);
+        let response = window.show(ctx, |ui| {
             ui.label("Hello series!");
         });
+
     }
-    fn expanded_movie_view(ui: &mut Ui, movie: &Movie) {
-        egui::Window::new(&movie.title).show(ui.ctx(), |ui| {
+    fn expanded_movie_window(&mut self, ctx: &egui::Context) {
+        if !self.expand_movie || self.expanded_user_movie.is_none() {
+            return
+        }
+        let movie = &self.expanded_user_movie.as_ref().unwrap();
+        let window = egui::Window::new(&movie.title)
+            .open(&mut self.expand_movie)
+            .resizable(true);
+        window.show(ctx, |ui| {
+            ui.close_menu();
             ui.label("Hello movie!");
         });
     }
