@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::fs;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub api_key: String,
     pub include_adult: bool,

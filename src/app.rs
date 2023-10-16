@@ -29,12 +29,16 @@ pub struct MovieApp {
 
     // Not a part of the layout
     movie_db: TheMovieDB,
+    config: Config,
 }
 
 impl MovieApp {
-    pub fn new(ctx: &egui::Context, config: Config) -> Self {
+    pub fn new(ctx: &egui::Context, mut config: Config) -> Self {
         let visuals = Visuals::dark();
         ctx.set_visuals(visuals);
+
+        // YOINK! We are not going to need in the config anymore.
+        let key = std::mem::take(&mut config.api_key);
 
         Self {
             search: String::new(),
@@ -46,7 +50,8 @@ impl MovieApp {
 
             expanded_view: ExpandedView::new(),
 
-            movie_db: TheMovieDB::new(config),
+            movie_db: TheMovieDB::new(key),
+            config: config,
         }
     }
 
@@ -291,13 +296,13 @@ impl MovieApp {
                     if ui.button("Open in tmdb").clicked() {
                         let mut path = String::from(MOVIE_URL);
                         path.push_str(movie.id.to_string().as_str());
-                        let browser = &self.movie_db.config.browser_name;
+                        let browser = &self.config.browser_name;
                         let _ = open::with_in_background(path, browser);
                     }
 
                     if ui.button("Open in imdb").clicked() {
                         let path = format!("https://www.imdb.com/find/?q={}", movie.title);
-                        let browser = &self.movie_db.config.browser_name;
+                        let browser = &self.config.browser_name;
                         //use External IDs (movie endpoint)
                         let _ = open::with_in_background(path, browser);
                     }
@@ -383,13 +388,13 @@ impl MovieApp {
                     if ui.button("Open in tmdb").clicked() {
                         let mut path = String::from(TV_URL);
                         path.push_str(series.id.to_string().as_str());
-                        let browser = &self.movie_db.config.browser_name;
+                        let browser = &self.config.browser_name;
                         let _ = open::with_in_background(path, browser);
                     }
 
                     if ui.button("Open in imdb").clicked() {
                         let path = format!("https://www.imdb.com/find/?q={}", series.name);
-                        let browser = &self.movie_db.config.browser_name;
+                        let browser = &self.config.browser_name;
                         //its buggy open in tmdb instead?
                         let _ = open::with_in_background(path, browser);
                     }
@@ -548,16 +553,18 @@ impl ExpandedView {
         if self.series.is_none() {
             return;
         }
-        /*let id  = self.series.clone().unwrap().id;
+
+        let id  = self.series.clone().unwrap().id;
         let unshared_channel = self.channel.0.clone();
         let movie_db_clone = movie_db.clone();
-        thread::spawn( || {
+        thread::spawn(move || {
             let series_details = movie_db_clone.get_series_details(id);
             unshared_channel.send(series_details).expect("Unable to send a SeriesDetails object")
-        });*/
-        let id  = self.series.clone().unwrap().id;
-        let series_details = movie_db.get_series_details(id);
-        self.channel.0.send(series_details).expect("Unable to send a SeriesDetails object")
+        });
+
+        // let id  = self.series.clone().unwrap().id;
+        // let series_details = movie_db.get_series_details(id);
+        // self.channel.0.send(series_details).expect("Unable to send a SeriesDetails object")
     }
 
     fn expanded_movie_window(&mut self, ctx: &egui::Context, movie_db: &TheMovieDB) {

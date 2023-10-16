@@ -19,34 +19,33 @@ pub enum Width {
     ORIGINAL,
 }
 
+#[derive(Clone)]
 pub struct TheMovieDB {
-    pub config: Config,
+    api_key: String,
     agent: Agent,
     // cache object outputs to avoid making multiple requests for the same data
 }
 
 impl TheMovieDB {
-    pub fn new(config: Config) -> Self {
+    pub fn new(key: String) -> Self {
         Self {
-            config,
+            api_key: key,
             agent: AgentBuilder::new()
                 .timeout(Duration::from_secs(15))
                 .build()
         }
     }
 
-    fn new_authorized_get(&self, url: String) -> ureq::Request {
-        let request = self.agent.get(&url)
+    fn new_authorized_get(&self, url: &str) -> ureq::Request {
+        let request = self.agent.get(url)
             .set("Accept", "application/json")
-            .set("Authorization", &format!("Bearer {}", &self.config.api_key));
+            .set("Authorization", &format!("Bearer {}", self.api_key));
         request
     }
 
     pub fn search_production(&self, query: &str) -> Vec<Production> {
-        let mut url = String::from(SEARCH_MULTI_URL);
-        url.push_str(format!("?query={}&include_adult={}", query, true).as_str());
-
-        let request = self.new_authorized_get(url);
+        let url = format!("{SEARCH_MULTI_URL}?query={}&include_adult={}", query, true);
+        let request = self.new_authorized_get(&url);
 
         println!("Executing request..");
         let Ok(response) = request.call() else {
@@ -85,7 +84,6 @@ impl TheMovieDB {
     }
 
     pub fn get_full_poster_url(poster: &str, width: Width) -> String {
-        let mut url = String::from(IMAGE_URL);
         let size = match width {
             Width::W200 => "w200",
             Width::W300 => "w300",
@@ -93,16 +91,13 @@ impl TheMovieDB {
             Width::W500 => "w500",
             Width::ORIGINAL => "original",
         };
-        url.push_str(size);
-        url.push_str(poster);
-        url
+        format!("{IMAGE_URL}{size}{poster}")
     }
 
     pub fn get_series_details(&self, id: u32) -> SeriesDetails {
-        let mut url = String::from(SERIES_DETAILS_URL);
-        url.push_str(id.to_string().as_str());
+        let url = format!("{SERIES_DETAILS_URL}{id}");
+        let request = self.new_authorized_get(&url);
 
-        let request = self.new_authorized_get(url);
         println!("Executing request..");
 
         let Ok(response) = request.call() else {
@@ -115,11 +110,8 @@ impl TheMovieDB {
     }
 
     pub fn get_season_details(&self, series_id: u32, season_number: u32) -> SeasonDetails {
-        let mut url = String::from(SERIES_DETAILS_URL);
-        url.push_str(series_id.to_string().as_str());
-        url.push_str("/season/");
-        url.push_str(season_number.to_string().as_str());
-        let request = self.new_authorized_get(url);
+        let url = format!("{SERIES_DETAILS_URL}{series_id}/season/{season_number}");
+        let request = self.new_authorized_get(&url);
 
         println!("Executing request..");
         let Ok(response) = request.call() else {
