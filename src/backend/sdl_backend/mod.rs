@@ -5,11 +5,8 @@ pub use egui;
 pub use gl;
 pub use sdl2;
 pub mod painter;
-#[cfg(feature = "use_epi")]
-pub use epi;
+
 use painter::Painter;
-#[cfg(feature = "use_epi")]
-use std::time::Instant;
 use {
     egui::*,
     sdl2::{
@@ -19,25 +16,6 @@ use {
         mouse::{Cursor, SystemCursor},
     },
 };
-#[cfg(feature = "use_epi")]
-/// Frame time for CPU usage.
-pub fn get_frame_time(start_time: Instant) -> f32 {
-    (Instant::now() - start_time).as_secs_f64() as f32
-}
-#[cfg(feature = "use_epi")]
-pub struct Signal;
-#[cfg(feature = "use_epi")]
-impl Default for Signal {
-    fn default() -> Self {
-        Self {}
-    }
-}
-#[cfg(feature = "use_epi")]
-use epi::backend::RepaintSignal;
-#[cfg(feature = "use_epi")]
-impl RepaintSignal for Signal {
-    fn request_repaint(&self) {}
-}
 
 pub struct FusedCursor {
     pub cursor: Cursor,
@@ -59,6 +37,7 @@ impl Default for FusedCursor {
     }
 }
 
+#[allow(dead_code)]
 pub enum DpiScaling {
     /// Default is handled by sdl2, probably 1.0
     Default,
@@ -66,6 +45,7 @@ pub enum DpiScaling {
     Custom(f32),
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub enum ShaderVersion {
     /// Default is GLSL 150+.
@@ -325,23 +305,23 @@ pub fn translate_virtual_key_code(key: sdl2::keyboard::Keycode) -> Option<egui::
     use Keycode::*;
 
     Some(match key {
-        Left => Key::ArrowLeft,
-        Up => Key::ArrowUp,
+        Left  => Key::ArrowLeft,
+        Up    => Key::ArrowUp,
         Right => Key::ArrowRight,
-        Down => Key::ArrowDown,
+        Down  => Key::ArrowDown,
 
-        Escape => Key::Escape,
-        Tab => Key::Tab,
+        Escape    => Key::Escape,
+        Tab       => Key::Tab,
         Backspace => Key::Backspace,
-        Space => Key::Space,
-        Return => Key::Enter,
+        Space     => Key::Space,
+        Return    => Key::Enter,
 
-        Insert => Key::Insert,
-        Home => Key::Home,
-        Delete => Key::Delete,
-        End => Key::End,
+        Insert   => Key::Insert,
+        Home     => Key::Home,
+        Delete   => Key::Delete,
+        End      => Key::End,
         PageDown => Key::PageDown,
-        PageUp => Key::PageUp,
+        PageUp   => Key::PageUp,
 
         Kp0 | Num0 => Key::Num0,
         Kp1 | Num1 => Key::Num1,
@@ -381,9 +361,7 @@ pub fn translate_virtual_key_code(key: sdl2::keyboard::Keycode) -> Option<egui::
         Y => Key::Y,
         Z => Key::Z,
 
-        _ => {
-            return None;
-        }
+        _ => return None,
     })
 }
 
@@ -414,7 +392,6 @@ pub fn translate_cursor(fused: &mut FusedCursor, cursor_icon: egui::CursorIcon) 
 }
 
 pub fn run_app() {
-    use egui::FullOutput;
     use sdl2::{video::GLProfile, event::Event};
     use sdl2::video::SwapInterval;
 

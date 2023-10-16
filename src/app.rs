@@ -37,6 +37,9 @@ impl MovieApp {
         let visuals = Visuals::dark();
         ctx.set_visuals(visuals);
 
+        // Implement dynamic scale changing?
+        ctx.set_pixels_per_point(1.66);
+
         // YOINK! We are not going to need in the config anymore.
         let key = std::mem::take(&mut config.api_key);
 
@@ -51,7 +54,7 @@ impl MovieApp {
             expanded_view: ExpandedView::new(),
 
             movie_db: TheMovieDB::new(key),
-            config: config,
+            config,
         }
     }
 
@@ -83,16 +86,13 @@ impl MovieApp {
     }
 
     pub fn render(&mut self, ctx: &egui::Context) {
-        // Implement dynamic scale changing?
-        ctx.set_pixels_per_point(1.66);
+        self.expanded_view.expanded_series_window(ctx, &self.movie_db);
+        //self.expanded_view.expanded_movie_window(ctx, self.movie_db);
 
         self.top_panel(ctx);
         self.left_panel(ctx);
         self.central_panel(ctx);
         self.right_panel(ctx);
-
-        self.expanded_view.expanded_series_window(ctx, &self.movie_db);
-        //self.expanded_view.expanded_movie_window(ctx, self.movie_db);
     }
 }
 

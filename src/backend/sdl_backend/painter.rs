@@ -1,5 +1,6 @@
 extern crate gl;
 extern crate sdl2;
+
 use ahash::AHashMap;
 use core::mem;
 use core::ptr;
@@ -364,58 +365,58 @@ impl Painter {
         self.screen_rect = Rect::from_min_size(Default::default(), rect);
     }
 
-    pub fn new_user_texture(
-        &mut self,
-        size: (usize, usize),
-        srgba_pixels: &[Color32],
-        filtering: bool,
-    ) -> egui::TextureId {
-        assert_eq!(size.0 * size.1, srgba_pixels.len());
-
-        let mut pixels: Vec<u8> = Vec::with_capacity(srgba_pixels.len() * 4);
-        for srgba in srgba_pixels {
-            pixels.push(srgba[0]);
-            pixels.push(srgba[1]);
-            pixels.push(srgba[2]);
-            pixels.push(srgba[3]);
-        }
-
-        let id = egui::TextureId::User(self.textures.len() as u64);
-        self.textures.insert(
-            id,
-            Texture {
-                size,
-                pixels,
-                gl_id: None,
-                filtering,
-                dirty: true,
-            },
-        );
-
-        id
-    }
+    // pub fn new_user_texture(
+    //     &mut self,
+    //     size: (usize, usize),
+    //     srgba_pixels: &[Color32],
+    //     filtering: bool,
+    // ) -> egui::TextureId {
+    //     assert_eq!(size.0 * size.1, srgba_pixels.len());
+    //
+    //     let mut pixels: Vec<u8> = Vec::with_capacity(srgba_pixels.len() * 4);
+    //     for srgba in srgba_pixels {
+    //         pixels.push(srgba[0]);
+    //         pixels.push(srgba[1]);
+    //         pixels.push(srgba[2]);
+    //         pixels.push(srgba[3]);
+    //     }
+    //
+    //     let id = egui::TextureId::User(self.textures.len() as u64);
+    //     self.textures.insert(
+    //         id,
+    //         Texture {
+    //             size,
+    //             pixels,
+    //             gl_id: None,
+    //             filtering,
+    //             dirty: true,
+    //         },
+    //     );
+    //
+    //     id
+    // }
 
     /// Creates a new user texture from rgba8
-    pub fn new_user_texture_rgba8(
-        &mut self,
-        size: (usize, usize),
-        rgba8_pixels: Vec<u8>,
-        filtering: bool,
-    ) -> egui::TextureId {
-        let id = egui::TextureId::User(self.textures.len() as u64);
-        self.textures.insert(
-            id,
-            Texture {
-                size,
-                pixels: rgba8_pixels,
-                gl_id: None,
-                filtering,
-                dirty: true,
-            },
-        );
-
-        id
-    }
+    // pub fn new_user_texture_rgba8(
+    //     &mut self,
+    //     size: (usize, usize),
+    //     rgba8_pixels: Vec<u8>,
+    //     filtering: bool,
+    // ) -> egui::TextureId {
+    //     let id = egui::TextureId::User(self.textures.len() as u64);
+    //     self.textures.insert(
+    //         id,
+    //         Texture {
+    //             size,
+    //             pixels: rgba8_pixels,
+    //             gl_id: None,
+    //             filtering,
+    //             dirty: true,
+    //         },
+    //     );
+    //
+    //     id
+    // }
 
     /// fn free_texture() and fn free() implemented from epi both are basically the same.
     pub fn free_texture(&mut self, id: egui::TextureId) {
@@ -429,28 +430,28 @@ impl Painter {
         }
     }
 
-    pub fn update_user_texture_data(&mut self, id: egui::TextureId, _pixels: &[Color32]) {
-        if let Some(Texture { pixels, dirty, .. }) = self.textures.get_mut(&id) {
-            *pixels = Vec::with_capacity(pixels.len() * 4);
-
-            for p in _pixels {
-                pixels.push(p[0]);
-                pixels.push(p[1]);
-                pixels.push(p[2]);
-                pixels.push(p[3]);
-            }
-
-            *dirty = true;
-        }
-    }
+    // pub fn update_user_texture_data(&mut self, id: egui::TextureId, _pixels: &[Color32]) {
+    //     if let Some(Texture { pixels, dirty, .. }) = self.textures.get_mut(&id) {
+    //         *pixels = Vec::with_capacity(pixels.len() * 4);
+    //
+    //         for p in _pixels {
+    //             pixels.push(p[0]);
+    //             pixels.push(p[1]);
+    //             pixels.push(p[2]);
+    //             pixels.push(p[3]);
+    //         }
+    //
+    //         *dirty = true;
+    //     }
+    // }
 
     /// Updates texture rgba8 data
-    pub fn update_user_texture_rgba8_data(&mut self, id: egui::TextureId, rgba8_pixels: Vec<u8>) {
-        if let Some(Texture { pixels, dirty, .. }) = self.textures.get_mut(&id) {
-            *pixels = rgba8_pixels;
-            *dirty = true
-        };
-    }
+    // pub fn update_user_texture_rgba8_data(&mut self, id: egui::TextureId, rgba8_pixels: Vec<u8>) {
+    //     if let Some(Texture { pixels, dirty, .. }) = self.textures.get_mut(&id) {
+    //         *pixels = rgba8_pixels;
+    //         *dirty = true
+    //     };
+    // }
 
     pub fn paint_jobs(
         &mut self,
