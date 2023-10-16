@@ -3,11 +3,16 @@ use crate::production::{Production, Series, Movie, UserProduction};
 use crate::themoviedb::{TheMovieDB, Width};
 
 use egui;
-use egui::{Align, TopBottomPanel, Ui, Vec2, Visuals, Layout};
+use egui::{Align, TopBottomPanel, Ui, Vec2, Visuals, Layout, Sense};
 use egui::ImageSource::Uri;
 
 use std::fs::File;
 use std::io::Write;
+use std::sync::{Arc, mpsc};
+use std::sync::mpsc::{Receiver, Sender};
+use std::thread;
+use ureq::post;
+use crate::series_details::{SeasonDetails, SeriesDetails};
 
 pub struct MovieApp {
     // Left panel
@@ -20,7 +25,7 @@ pub struct MovieApp {
     selected_user_production: Option<usize>,
 
     // Expanded view state
-    expanded_view: ExpandedState,
+    expanded_view: ExpandedView,
 
     // Not a part of the layout
     movie_db: TheMovieDB,
@@ -39,7 +44,7 @@ impl MovieApp {
             user_productions: Vec::new(),
             selected_user_production: None,
 
-            expanded_view: ExpandedState::new(),
+            expanded_view: ExpandedView::new(),
 
             movie_db: TheMovieDB::new(config),
         }
@@ -81,8 +86,8 @@ impl MovieApp {
         self.central_panel(ctx);
         self.right_panel(ctx);
 
-        self.expanded_view.expanded_series_window(ctx);
-        self.expanded_view.expanded_movie_window(ctx);
+        self.expanded_view.expanded_series_window(ctx, &self.movie_db);
+        //self.expanded_view.expanded_movie_window(ctx, self.movie_db);
     }
 }
 
@@ -279,8 +284,7 @@ impl MovieApp {
                     }
                     //change name?: xpanded view, about, more, view seasons, view more, view details,
                     if ui.button("More details").clicked(){
-                        self.expanded_view.expanded_user_movie = Some(movie.clone());
-                        self.expanded_view.expand_movie = true;
+                        self.expanded_view.set_movie(movie.clone());
                         ui.close_menu();
                     }
 
@@ -372,8 +376,7 @@ impl MovieApp {
                     }
 
                     if ui.button("More series details").clicked(){
-                        self.expanded_view.expanded_user_series = Some(series.clone());
-                        self.expanded_view.expand_series = true;
+                        self.expanded_view.set_series(series.clone());
                         ui.close_menu();
                     }
 
@@ -452,44 +455,132 @@ impl MovieApp {
 
 }
 
-struct ExpandedState {
-    expand_series: bool,
-    expand_movie: bool,
-    expanded_user_series: Option<Series>,
-    expanded_user_movie: Option<Movie>,
+#[derive(PartialEq)]
+enum ExpandedState{
+    Closed,
+    Fetch,
+    Fetching,
+    Complete,
 }
-impl ExpandedState{
+struct ExpandedView {
+    channel: (Sender<SeriesDetails>, Receiver<SeriesDetails>),
+    series_state: ExpandedState,
+    movie_state: ExpandedState,
+    series_window_open: bool,
+    movie_window_open: bool,
+
+    series_details: Option<SeriesDetails>,
+    series: Option<Series>,
+    movie: Option<Movie>,
+}
+impl ExpandedView {
     pub fn new() -> Self{
         Self{
-            expand_series: false,
-            expand_movie: false,
-            expanded_user_series: None,
-            expanded_user_movie: None,
-        }
-    }
-    fn expanded_series_window(&mut self, ctx: &egui::Context) {
-        if !self.expand_series || self.expanded_user_series.is_none() {
-            return
-        }
-        let series = &self.expanded_user_series.as_ref().unwrap();
-        let window = egui::Window::new(&series.name)
-            .open(&mut self.expand_series)
-            .resizable(true);
-        let response = window.show(ctx, |ui| {
-            ui.label("Hello series!");
-        });
+            series_state: ExpandedState::Closed,
+            movie_state: ExpandedState::Closed,
+            series_window_open: false,
+            movie_window_open: false,
 
+            channel: mpsc::channel(),
+            series_details: None,
+            series: None,
+            movie: None,
+        }
     }
-    fn expanded_movie_window(&mut self, ctx: &egui::Context) {
-        if !self.expand_movie || self.expanded_user_movie.is_none() {
+
+    fn set_movie(&mut self, movie: Movie) {
+        self.movie = Some(movie);
+        self.movie_state = ExpandedState::Fetch;
+    }
+    fn set_series(&mut self, series: Series) {
+        self.series = Some(series);
+        self.series_state = ExpandedState::Fetch;
+    }
+
+    fn expanded_series_window(&mut self, ctx: &egui::Context, movie_db: &TheMovieDB) {
+        if self.series_state == ExpandedState::Closed {
             return
         }
-        let movie = &self.expanded_user_movie.as_ref().unwrap();
+        if self.series_state == ExpandedState::Fetching {
+            let received = self.channel.1.try_recv();
+            if received.is_ok() {
+                self.series_details = Some(received.unwrap());
+                self.series_state = ExpandedState::Complete;
+                self.series_window_open = true;
+            }
+            return
+        }
+        if self.series_state == ExpandedState::Fetch {
+            self.series_state = ExpandedState::Fetching;
+            self.fetch_series_details(movie_db);
+            return
+        }
+        let series = &self.series.as_ref().unwrap();
+        let window = egui::Window::new(&series.name)
+            .open(&mut self.series_window_open)
+            .resizable(true);
+        let series_details = &self.series_details.as_ref().unwrap();
+        window.show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                for season in &series_details.seasons {
+                    ui.vertical( |ui| {
+                        //it's a bad idea to fetch posters for every season
+                        if season.poster_path.is_some() {
+                            let image_url = TheMovieDB::get_full_poster_url(
+                                season.poster_path.to_owned().unwrap().as_str(),
+                                Width::W300
+                            );
+                            let image = egui::Image::new(Uri(image_url.into()));
+                            let poster = ui.add_sized([60.0, 100.0], image);
+                        }
+                        let response = ui.label(&season.name).interact(Sense::click());
+                        if response.clicked() {
+                            println!("Season clicked, should fetch season details (episodes)")
+                        }
+                    });
+                }
+            });
+
+        });
+    }
+
+    fn fetch_series_details(&self, movie_db: &TheMovieDB){
+        if self.series.is_none() {
+            return;
+        }
+        /*let id  = self.series.clone().unwrap().id;
+        let unshared_channel = self.channel.0.clone();
+        let movie_db_clone = movie_db.clone();
+        thread::spawn( || {
+            let series_details = movie_db_clone.get_series_details(id);
+            unshared_channel.send(series_details).expect("Unable to send a SeriesDetails object")
+        });*/
+        let id  = self.series.clone().unwrap().id;
+        let series_details = movie_db.get_series_details(id);
+        self.channel.0.send(series_details).expect("Unable to send a SeriesDetails object")
+    }
+
+    fn expanded_movie_window(&mut self, ctx: &egui::Context, movie_db: &TheMovieDB) {
+        //unimplemented, requires MovieDetails?
+        if self.movie_state == ExpandedState::Closed {
+            return
+        }
+        if self.movie_state == ExpandedState::Fetching {
+            return
+        }
+
+        if self.movie_state == ExpandedState::Fetch {
+            self.movie_state = ExpandedState::Fetching;
+            //fetch()
+            return
+        }
+        println!("Expanded");
+        let movie = &self.movie.as_ref().unwrap();
+        //Expanded
         let window = egui::Window::new(&movie.title)
-            .open(&mut self.expand_movie)
+            .open(&mut self.movie_window_open)
             .resizable(true);
         window.show(ctx, |ui| {
-            ui.close_menu();
             ui.label("Hello movie!");
         });
     }
