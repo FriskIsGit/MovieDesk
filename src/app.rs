@@ -3,7 +3,7 @@ use crate::production::{Production, Series, Movie, UserProduction};
 use crate::themoviedb::{TheMovieDB, Width};
 
 use egui;
-use egui::{Align, TopBottomPanel, Ui, Vec2, Visuals, Layout, Sense};
+use egui::{Align, TopBottomPanel, Ui, Vec2, Visuals, Layout, Sense, Label};
 use egui::ImageSource::Uri;
 
 use std::fs::File;
@@ -91,8 +91,8 @@ impl MovieApp {
 
         self.top_panel(ctx);
         self.left_panel(ctx);
-        self.central_panel(ctx);
         self.right_panel(ctx);
+        self.central_panel(ctx);
     }
 }
 
@@ -474,6 +474,7 @@ struct ExpandedView {
     series_window_open: bool,
     movie_window_open: bool,
 
+    season_details: Option<SeasonDetails>,
     series_details: Option<SeriesDetails>,
     series: Option<Series>,
     movie: Option<Movie>,
@@ -487,6 +488,7 @@ impl ExpandedView {
             movie_window_open: false,
 
             channel: mpsc::channel(),
+            season_details: None,
             series_details: None,
             series: None,
             movie: None,
@@ -499,6 +501,7 @@ impl ExpandedView {
     }
     fn set_series(&mut self, series: Series) {
         self.series = Some(series);
+        self.season_details = None;
         self.series_state = ExpandedState::Fetch;
     }
 
@@ -520,6 +523,7 @@ impl ExpandedView {
             self.fetch_series_details(movie_db);
             return
         }
+        //Expanded state reached
         let series = &self.series.as_ref().unwrap();
         let window = egui::Window::new(&series.name)
             .open(&mut self.series_window_open)
@@ -527,25 +531,43 @@ impl ExpandedView {
         let series_details = &self.series_details.as_ref().unwrap();
         window.show(ctx, |ui| {
             ui.horizontal(|ui| {
-                for season in &series_details.seasons {
-                    ui.vertical( |ui| {
-                        //it's a bad idea to fetch posters for every season
-                        if season.poster_path.is_some() {
-                            let image_url = TheMovieDB::get_full_poster_url(
-                                season.poster_path.to_owned().unwrap().as_str(),
-                                Width::W300
-                            );
-                            let image = egui::Image::new(Uri(image_url.into()));
-                            let poster = ui.add_sized([60.0, 100.0], image);
-                        }
-                        let response = ui.label(&season.name).interact(Sense::click());
-                        if response.clicked() {
-                            println!("Season clicked, should fetch season details (episodes)")
-                        }
-                    });
-                }
+                egui::ScrollArea::horizontal().show(ui, |ui| {
+                    for season in &series_details.seasons {
+                        ui.vertical( |ui| {
+                            //it's a bad idea to fetch posters for every season
+                            if season.poster_path.is_some() {
+                                let image_url = TheMovieDB::get_full_poster_url(
+                                    season.poster_path.to_owned().unwrap().as_str(),
+                                    Width::W300
+                                );
+                                let image = egui::Image::new(Uri(image_url.into())).sense(Sense::click());
+                                let poster_response = ui.add_sized([60.0, 100.0], image);
+                                if poster_response.clicked() {
+                                    self.season_details = Some(movie_db.get_season_details(series.id, season.season_number));
+                                }
+                            }
+                            let label_response = ui.add(Label::new(&season.name).sense(Sense::click()));
+                            if label_response.clicked() {
+                                self.season_details = Some(movie_db.get_season_details(series.id, season.season_number));
+                            }
+                        });
+                    }
+                })
             });
-
+            if self.season_details.is_none() {
+                return;
+            }
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                ui.vertical( |ui| {
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        let season_details = self.season_details.as_ref().expect("Season details was None");
+                        for episode in &season_details.episodes {
+                            ui.label(format!("{}# {}", episode.episode_number, episode.name));
+                        };
+                    });
+                });
+            });
         });
     }
 

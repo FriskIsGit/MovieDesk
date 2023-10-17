@@ -47,9 +47,9 @@ impl SeasonDetails {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Episode {
-    episode_number: u32,
-    name: String,
-    overview: String,
-    runtime: Option<u32>,
-    vote_average: f32,
+    pub episode_number: u32,
+    pub name: String,
+    pub overview: String,
+    pub runtime: Option<u32>,
+    pub vote_average: f32,
 }
