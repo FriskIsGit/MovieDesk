@@ -5,6 +5,7 @@ mod production;
 mod series_details;
 mod themoviedb;
 mod backend;
+mod jobs;
 
 // TODO: Add + in every row with a production or drag and drop to move items to the center panel
 // TODO: Load images on a separate thread so it doesn't lag ui, display buffering circle(egui does it already)?

@@ -35,7 +35,7 @@ pub struct SeasonDetails {
     pub id: u32,
     pub season_number: u32,
     pub name: String,
-    pub air_date: String,
+    pub air_date: Option<String>,
     pub episodes: Vec<Episode>,
 }
 

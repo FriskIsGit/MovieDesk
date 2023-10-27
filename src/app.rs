@@ -12,6 +12,7 @@ use std::sync::{Arc, mpsc};
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use ureq::post;
+use crate::jobs::Job;
 use crate::series_details::{SeasonDetails, SeriesDetails};
 
 pub struct MovieApp {
@@ -28,7 +29,7 @@ pub struct MovieApp {
     expanded_view: ExpandedView,
 
     // Not a part of the layout
-    movie_db: TheMovieDB,
+    movie_db: Arc<TheMovieDB>,
     config: Config,
 }
 
@@ -43,6 +44,7 @@ impl MovieApp {
         // YOINK! We are not going to need in the config anymore.
         let key = std::mem::take(&mut config.api_key);
 
+        let movie_db = Arc::new(TheMovieDB::new(key));
         Self {
             search: String::new(),
             show_adult_content: config.include_adult,
@@ -51,9 +53,9 @@ impl MovieApp {
             user_productions: Vec::new(),
             selected_user_production: None,
 
-            expanded_view: ExpandedView::new(),
+            expanded_view: ExpandedView::new(movie_db.clone()),
 
-            movie_db: TheMovieDB::new(key),
+            movie_db,
             config,
         }
     }
@@ -86,7 +88,7 @@ impl MovieApp {
     }
 
     pub fn render(&mut self, ctx: &egui::Context) {
-        self.expanded_view.expanded_series_window(ctx, &self.movie_db);
+        self.expanded_view.expanded_series_window(ctx);
         //self.expanded_view.expanded_movie_window(ctx, self.movie_db);
 
         self.top_panel(ctx);
@@ -160,7 +162,7 @@ impl MovieApp {
                             Production::Movie(movie) => {
                                 if movie.poster_path.is_some() {
                                     let image_url = TheMovieDB::get_full_poster_url(
-                                        movie.poster_path.to_owned().unwrap().as_str(),
+                                        &movie.poster_path.as_ref().unwrap(),
                                         Width::W300,
                                     );
 
@@ -171,7 +173,7 @@ impl MovieApp {
                             Production::Series(series) => {
                                 if series.poster_path.is_some() {
                                     let image_url = TheMovieDB::get_full_poster_url(
-                                        series.poster_path.to_owned().unwrap().as_str(),
+                                        &series.poster_path.as_ref().unwrap(),
                                         Width::W300,
                                     );
 
@@ -308,12 +310,16 @@ impl MovieApp {
                     }
 
                     if ui.button("Download poster").clicked() && movie.poster_path.is_some() {
-                        let poster = movie.poster_path.as_ref().unwrap().as_str();
-                        let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
-                        let bytes = self.movie_db.download_resource(resource.as_str());
-                        let mut file = File::create(&poster[1..]).expect("Unable to create file");
-                        // Write a slice of bytes to the file
-                        file.write_all(&bytes).unwrap();
+                        let poster = movie.poster_path.clone().unwrap().to_owned();
+                        let resource = TheMovieDB::get_full_poster_url(&poster, Width::ORIGINAL);
+                        let movie_db = self.movie_db.clone();
+                        thread::spawn(move || {
+                            let bytes = movie_db.download_resource(resource.as_str());
+                            let mut file = File::create(&poster[1..]).expect("Unable to create file");
+                            // Write a slice of bytes to the file
+                            file.write_all(&bytes).unwrap();
+                        });
+
                     }
 
                     if ui.button("Close menu").clicked() {
@@ -400,12 +406,15 @@ impl MovieApp {
                     }
 
                     if ui.button("Download poster").clicked() && series.poster_path.is_some() {
-                        let poster = series.poster_path.as_ref().unwrap().as_str();
-                        let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
-                        let bytes = self.movie_db.download_resource(resource.as_str());
-                        let mut file = File::create(&poster[1..]).expect("Unable to create file");
-                        // Write a slice of bytes to the file
-                        file.write_all(&bytes).unwrap();
+                        let poster = series.poster_path.clone().unwrap().to_owned();
+                        let resource = TheMovieDB::get_full_poster_url(&poster, Width::ORIGINAL);
+                        let movie_db = self.movie_db.clone();
+                        thread::spawn(move ||{
+                            let bytes = movie_db.download_resource(resource.as_str());
+                            let mut file = File::create(&poster[1..]).expect("Unable to create file");
+                            // Write a slice of bytes to the file
+                            file.write_all(&bytes).unwrap();
+                        });
                     }
 
                     if ui.button("Close menu").clicked() {
@@ -460,70 +469,71 @@ impl MovieApp {
 
 }
 
-#[derive(PartialEq)]
-enum ExpandedState{
-    Closed,
-    Fetch,
-    Fetching,
-    Complete,
-}
 struct ExpandedView {
-    channel: (Sender<SeriesDetails>, Receiver<SeriesDetails>),
-    series_state: ExpandedState,
-    movie_state: ExpandedState,
     series_window_open: bool,
     movie_window_open: bool,
-
-    season_details: Option<SeasonDetails>,
-    series_details: Option<SeriesDetails>,
     series: Option<Series>,
     movie: Option<Movie>,
+
+    season_details: Option<SeasonDetails>,
+    season_details_job: Job<Option<SeasonDetails>>,
+
+    series_details: Option<SeriesDetails>,
+    series_details_job: Job<Option<SeriesDetails>>,
+
+    movie_db: Arc<TheMovieDB>,
 }
 impl ExpandedView {
-    pub fn new() -> Self{
+    pub fn new(movie_db: Arc<TheMovieDB>) -> Self{
         Self{
-            series_state: ExpandedState::Closed,
-            movie_state: ExpandedState::Closed,
             series_window_open: false,
             movie_window_open: false,
-
-            channel: mpsc::channel(),
-            season_details: None,
-            series_details: None,
             series: None,
             movie: None,
+
+            season_details: None,
+            season_details_job: Job::empty(),
+
+            series_details: None,
+            series_details_job: Job::empty(),
+
+            movie_db
         }
     }
 
     fn set_movie(&mut self, movie: Movie) {
+        /*let id = movie.id;
         self.movie = Some(movie);
-        self.movie_state = ExpandedState::Fetch;
+        let movie_db = self.movie_db.clone();
+        let handle = thread::spawn(move || {
+            Some(movie_db.get_movie_details(id))
+        });
+        self.movie_details_job.set(handle);*/
+
     }
     fn set_series(&mut self, series: Series) {
+        let id = series.id;
         self.series = Some(series);
-        self.season_details = None;
-        self.series_state = ExpandedState::Fetch;
+        let movie_db = self.movie_db.clone();
+        let handle = thread::spawn(move || {
+            Some(movie_db.get_series_details(id))
+        });
+        self.series_details_job.set(handle);
     }
 
-    fn expanded_series_window(&mut self, ctx: &egui::Context, movie_db: &TheMovieDB) {
-        if self.series_state == ExpandedState::Closed {
-            return
+    //this is called every frame
+    fn expanded_series_window(&mut self, ctx: &egui::Context) {
+        if self.series.is_none() {
+            return;
         }
-        if self.series_state == ExpandedState::Fetching {
-            let received = self.channel.1.try_recv();
-            if received.is_ok() {
-                self.series_details = Some(received.unwrap());
-                self.series_state = ExpandedState::Complete;
-                self.series_window_open = true;
-            }
-            return
+        if self.series_details_job.is_any_and_finished() {
+            self.series_details = self.series_details_job.take_result().expect("No series details :(");
+            self.series_window_open = true;
         }
-        if self.series_state == ExpandedState::Fetch {
-            self.series_state = ExpandedState::Fetching;
-            self.fetch_series_details(movie_db);
-            return
+        if self.series_details.is_none() {
+            return;
         }
-        //Expanded state reached
+        //Displayable state reached
         let series = &self.series.as_ref().unwrap();
         let window = egui::Window::new(&series.name)
             .open(&mut self.series_window_open)
@@ -537,18 +547,18 @@ impl ExpandedView {
                             //it's a bad idea to fetch posters for every season
                             if season.poster_path.is_some() {
                                 let image_url = TheMovieDB::get_full_poster_url(
-                                    season.poster_path.to_owned().unwrap().as_str(),
+                                    &season.poster_path.as_ref().unwrap(),
                                     Width::W300
                                 );
                                 let image = egui::Image::new(Uri(image_url.into())).sense(Sense::click());
                                 let poster_response = ui.add_sized([60.0, 100.0], image);
                                 if poster_response.clicked() {
-                                    self.season_details = Some(movie_db.get_season_details(series.id, season.season_number));
+                                    self.season_details = Some(self.movie_db.get_season_details(series.id, season.season_number));
                                 }
                             }
                             let label_response = ui.add(Label::new(&season.name).sense(Sense::click()));
                             if label_response.clicked() {
-                                self.season_details = Some(movie_db.get_season_details(series.id, season.season_number));
+                                self.season_details = Some(self.movie_db.get_season_details(series.id, season.season_number));
                             }
                         });
                     }
@@ -571,38 +581,7 @@ impl ExpandedView {
         });
     }
 
-    fn fetch_series_details(&self, movie_db: &TheMovieDB){
-        if self.series.is_none() {
-            return;
-        }
-
-        let id  = self.series.clone().unwrap().id;
-        let unshared_channel = self.channel.0.clone();
-        let movie_db_clone = movie_db.clone();
-        thread::spawn(move || {
-            let series_details = movie_db_clone.get_series_details(id);
-            unshared_channel.send(series_details).expect("Unable to send a SeriesDetails object")
-        });
-
-        // let id  = self.series.clone().unwrap().id;
-        // let series_details = movie_db.get_series_details(id);
-        // self.channel.0.send(series_details).expect("Unable to send a SeriesDetails object")
-    }
-
-    fn expanded_movie_window(&mut self, ctx: &egui::Context, movie_db: &TheMovieDB) {
-        //unimplemented, requires MovieDetails?
-        if self.movie_state == ExpandedState::Closed {
-            return
-        }
-        if self.movie_state == ExpandedState::Fetching {
-            return
-        }
-
-        if self.movie_state == ExpandedState::Fetch {
-            self.movie_state = ExpandedState::Fetching;
-            //fetch()
-            return
-        }
+    fn expanded_movie_window(&mut self, ctx: &egui::Context) {
         println!("Expanded");
         let movie = &self.movie.as_ref().unwrap();
         //Expanded

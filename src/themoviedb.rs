@@ -83,7 +83,7 @@ impl TheMovieDB {
         productions
     }
 
-    pub fn get_full_poster_url(poster: &str, width: Width) -> String {
+    pub fn get_full_poster_url(poster: &String, width: Width) -> String {
         let size = match width {
             Width::W200 => "w200",
             Width::W300 => "w300",
