@@ -27,6 +27,8 @@ pub struct MovieApp {
 
     // Expanded view state
     expanded_view: ExpandedView,
+    // Jobs
+    fetch_productions_job: Job<Vec<Production>>,
 
     // Not a part of the layout
     movie_db: Arc<TheMovieDB>,
@@ -54,6 +56,7 @@ impl MovieApp {
             selected_user_production: None,
 
             expanded_view: ExpandedView::new(movie_db.clone()),
+            fetch_productions_job: Job::empty(),
 
             movie_db,
             config,
@@ -119,7 +122,12 @@ impl MovieApp {
                 let pressed_enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
 
                 if response.lost_focus() && pressed_enter {
-                    self.search_productions = self.movie_db.search_production(&self.search);
+                    let movie_db = self.movie_db.clone();
+                    let search = self.search.to_owned();
+                    let handle = thread::spawn(move ||{
+                        movie_db.search_production(&search)
+                    });
+                    self.fetch_productions_job.set(handle);
                     search_triggered = true;
                 }
             });
@@ -455,7 +463,9 @@ impl MovieApp {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
 
-            // Small workaround for interprocedural conflicts.
+            if self.fetch_productions_job.is_any_and_finished() {
+                self.search_productions = self.fetch_productions_job.take_result().expect("No productions")
+            }
             let mut productions = std::mem::take(&mut self.search_productions);
             for prod in productions.iter() {
                 match prod {

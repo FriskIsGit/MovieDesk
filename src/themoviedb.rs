@@ -58,7 +58,6 @@ impl TheMovieDB {
         }
 
         let json_response = response.into_string().unwrap().to_owned();
-        println!("content: {}", json_response);
 
         let payload: Value = serde_json::from_str(json_response.as_str()).unwrap();
         let arr: Value = payload["results"].to_owned();
@@ -72,11 +71,9 @@ impl TheMovieDB {
             let media_type = prod_obj["media_type"].to_owned();
             if media_type == "tv" {
                 let series = Series::parse(prod_obj.to_string().as_str());
-                println!("{:?}", series);
                 productions.push(Production::Series(series));
             } else if media_type == "movie" {
                 let movie = Movie::parse(prod_obj.to_string().as_str());
-                println!("{:?}", movie);
                 productions.push(Production::Movie(movie));
             }
         }
@@ -105,7 +102,6 @@ impl TheMovieDB {
         };
 
         let json = response.into_string().unwrap();
-        println!("series_details_json: {}", json);
         SeriesDetails::parse(json.as_str())
     }
 
@@ -119,7 +115,6 @@ impl TheMovieDB {
         };
 
         let json = response.into_string().unwrap();
-        println!("season_details_json: {}", json);
         SeasonDetails::parse(json.as_str())
     }
 
