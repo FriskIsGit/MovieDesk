@@ -4,24 +4,32 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ahash = { version = "0.8.3",  optional = true }
-gl    = { version = "0.14.0", optional = true }
-sdl2  = { version = "0.35.2", optional = true }
-# sdl2  = { version = "0.35.2", features = ["bundled"], optional = true }
+# Backend libraries
+ahash  = { version = "0.8.3",  optional = true }
+gl     = { version = "0.14.0", optional = true }
+sdl2   = { version = "0.35.2", optional = true }
+# TODO: Just take entire source code and put it in the backend directory
+#       Place precompiled libs in lib/ folder for easy linking
+glfw   = { version = "0.53.0", optional = true }
+eframe = { version = "0.23.0", optional = true }
 
-eframe  = { version = "0.23.0", optional = true }
-
+# Core GUI and + other extensions
 egui = "0.23.0"
 egui_extras = { version = "0.23.0", features = ["image", "http"] }
-
 image = { version = "0.24", features = ["jpeg", "png"] }
+
+# Serializations
 serde_json = "1.0.107"
 serde = { version = "1.0", features = ["derive"] }
 
+# Http requests
 ureq = "2.8.0"
+
+# Opens file dialog
 open = "5.0.0"
 
 [features]
 default = [ "sdl_backend" ]
 sdl_backend = [ "dep:sdl2", "dep:gl", "dep:ahash" ]
+glfw_backend = [ "dep:glfw", "dep:gl" ]
 eframe_backend = [ "dep:eframe" ]
