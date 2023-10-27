@@ -1,19 +1,17 @@
 use crate::config::Config;
-use crate::production::{Production, Series, Movie, UserProduction};
+use crate::jobs::Job;
+use crate::production::{Movie, Production, Series, UserProduction};
+use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 
 use egui;
-use egui::{Align, TopBottomPanel, Ui, Vec2, Visuals, Layout, Sense, Label};
 use egui::ImageSource::Uri;
+use egui::{Align, Label, Layout, Sense, TopBottomPanel, Ui, Vec2, Visuals};
 
 use std::fs::File;
 use std::io::Write;
-use std::sync::{Arc, mpsc};
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::Arc;
 use std::thread;
-use ureq::post;
-use crate::jobs::Job;
-use crate::series_details::{SeasonDetails, SeriesDetails};
 
 pub struct MovieApp {
     // Left panel
@@ -75,13 +73,15 @@ impl MovieApp {
         // );
 
         // Put my font first (highest priority) for proportional text:
-        fonts.families
+        fonts
+            .families
             .entry(egui::FontFamily::Proportional)
             .or_default()
             .insert(0, "my_font".to_owned());
 
         // Put my font as last fallback for monospace:
-        fonts.families
+        fonts
+            .families
             .entry(egui::FontFamily::Monospace)
             .or_default()
             .push("my_font".to_owned());
@@ -124,9 +124,7 @@ impl MovieApp {
                 if response.lost_focus() && pressed_enter {
                     let movie_db = self.movie_db.clone();
                     let search = self.search.to_owned();
-                    let handle = thread::spawn(move ||{
-                        movie_db.search_production(&search)
-                    });
+                    let handle = thread::spawn(move || movie_db.search_production(&search));
                     self.fetch_productions_job.set(handle);
                     search_triggered = true;
                 }
@@ -208,7 +206,7 @@ impl MovieApp {
                 ui.label("Currently nothing is selected ._.");
                 return;
             };
-            
+
             // let mut user_productions = self.user_productions.borrow_mut();
             let Some(entry) = self.user_productions.get_mut(index) else {
                 ui.add_space(10.0);
@@ -256,7 +254,6 @@ impl MovieApp {
                 ui.text_edit_multiline(&mut entry.user_note);
             });
         });
-
     }
 
     // Could be used for some toolbar logic at the top of the layout.
@@ -277,13 +274,14 @@ impl MovieApp {
                 let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
 
                 let image = egui::Image::new(Uri(image_url.into()));
-                let poster = ui.add_sized([60.0, 100.0], image)
-                    .interact(egui::Sense::click());
+                let poster = ui.add_sized([60.0, 100.0], image).interact(egui::Sense::click());
                 poster.context_menu(|ui| {
                     if ui.button("Add movie").clicked() {
                         // let mut user_productions = self.user_productions.borrow_mut();
                         let exists = self.user_productions.iter().any(|entry| {
-                            let Production::Movie(user_movie) = &entry.production else { return false };
+                            let Production::Movie(user_movie) = &entry.production else {
+                                return false;
+                            };
                             user_movie.id == movie.id
                         });
 
@@ -298,7 +296,7 @@ impl MovieApp {
                         ui.close_menu()
                     }
                     //change name?: xpanded view, about, more, view seasons, view more, view details,
-                    if ui.button("More details").clicked(){
+                    if ui.button("More details").clicked() {
                         self.expanded_view.set_movie(movie.clone());
                         ui.close_menu();
                     }
@@ -327,7 +325,6 @@ impl MovieApp {
                             // Write a slice of bytes to the file
                             file.write_all(&bytes).unwrap();
                         });
-
                     }
 
                     if ui.button("Close menu").clicked() {
@@ -372,14 +369,15 @@ impl MovieApp {
                 let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
 
                 let image = egui::Image::new(Uri(image_url.into()));
-                let poster = ui.add_sized([60.0, 100.0], image)
-                    .interact(egui::Sense::click());
+                let poster = ui.add_sized([60.0, 100.0], image).interact(egui::Sense::click());
 
                 poster.context_menu(|ui| {
                     if ui.button("Add series").clicked() {
                         // let mut user_productions = self.user_productions.borrow_mut();
                         let exists = self.user_productions.iter().any(|entry| {
-                            let Production::Series(user_series) = &entry.production else { return false };
+                            let Production::Series(user_series) = &entry.production else {
+                                return false;
+                            };
                             user_series.id == series.id
                         });
 
@@ -394,7 +392,7 @@ impl MovieApp {
                         ui.close_menu()
                     }
 
-                    if ui.button("More series details").clicked(){
+                    if ui.button("More series details").clicked() {
                         self.expanded_view.set_series(series.clone());
                         ui.close_menu();
                     }
@@ -417,7 +415,7 @@ impl MovieApp {
                         let poster = series.poster_path.clone().unwrap().to_owned();
                         let resource = TheMovieDB::get_full_poster_url(&poster, Width::ORIGINAL);
                         let movie_db = self.movie_db.clone();
-                        thread::spawn(move ||{
+                        thread::spawn(move || {
                             let bytes = movie_db.download_resource(resource.as_str());
                             let mut file = File::create(&poster[1..]).expect("Unable to create file");
                             // Write a slice of bytes to the file
@@ -476,7 +474,6 @@ impl MovieApp {
             std::mem::swap(&mut productions, &mut self.search_productions);
         });
     }
-
 }
 
 struct ExpandedView {
@@ -493,9 +490,10 @@ struct ExpandedView {
 
     movie_db: Arc<TheMovieDB>,
 }
+
 impl ExpandedView {
-    pub fn new(movie_db: Arc<TheMovieDB>) -> Self{
-        Self{
+    pub fn new(movie_db: Arc<TheMovieDB>) -> Self {
+        Self {
             series_window_open: false,
             movie_window_open: false,
             series: None,
@@ -507,7 +505,7 @@ impl ExpandedView {
             series_details: None,
             series_details_job: Job::empty(),
 
-            movie_db
+            movie_db,
         }
     }
 
@@ -519,15 +517,13 @@ impl ExpandedView {
             Some(movie_db.get_movie_details(id))
         });
         self.movie_details_job.set(handle);*/
-
     }
+
     fn set_series(&mut self, series: Series) {
         let id = series.id;
         self.series = Some(series);
         let movie_db = self.movie_db.clone();
-        let handle = thread::spawn(move || {
-            Some(movie_db.get_series_details(id))
-        });
+        let handle = thread::spawn(move || Some(movie_db.get_series_details(id)));
         self.series_details_job.set(handle);
     }
 
@@ -553,22 +549,22 @@ impl ExpandedView {
             ui.horizontal(|ui| {
                 egui::ScrollArea::horizontal().show(ui, |ui| {
                     for season in &series_details.seasons {
-                        ui.vertical( |ui| {
+                        ui.vertical(|ui| {
                             //it's a bad idea to fetch posters for every season
                             if season.poster_path.is_some() {
-                                let image_url = TheMovieDB::get_full_poster_url(
-                                    &season.poster_path.as_ref().unwrap(),
-                                    Width::W300
-                                );
+                                let image_url =
+                                    TheMovieDB::get_full_poster_url(&season.poster_path.as_ref().unwrap(), Width::W300);
                                 let image = egui::Image::new(Uri(image_url.into())).sense(Sense::click());
                                 let poster_response = ui.add_sized([60.0, 100.0], image);
                                 if poster_response.clicked() {
-                                    self.season_details = Some(self.movie_db.get_season_details(series.id, season.season_number));
+                                    self.season_details =
+                                        Some(self.movie_db.get_season_details(series.id, season.season_number));
                                 }
                             }
                             let label_response = ui.add(Label::new(&season.name).sense(Sense::click()));
                             if label_response.clicked() {
-                                self.season_details = Some(self.movie_db.get_season_details(series.id, season.season_number));
+                                self.season_details =
+                                    Some(self.movie_db.get_season_details(series.id, season.season_number));
                             }
                         });
                     }
@@ -579,12 +575,12 @@ impl ExpandedView {
             }
             ui.add_space(8.0);
             ui.horizontal(|ui| {
-                ui.vertical( |ui| {
+                ui.vertical(|ui| {
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         let season_details = self.season_details.as_ref().expect("Season details was None");
                         for episode in &season_details.episodes {
                             ui.label(format!("{}# {}", episode.episode_number, episode.name));
-                        };
+                        }
                     });
                 });
             });

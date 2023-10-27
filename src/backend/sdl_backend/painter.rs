@@ -256,16 +256,8 @@ pub fn compile_shader(src: &str, ty: GLenum) -> GLuint {
             // clippy not happy with this, broke the CI:
             // error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
             // buf.set_len((len as usize) - 1); // subtract 1 to skip the trailing null character
-            gl::GetShaderInfoLog(
-                shader,
-                len,
-                ptr::null_mut(),
-                buf.as_mut_ptr() as *mut GLchar,
-            );
-            panic!(
-                "{}",
-                str::from_utf8(&buf).expect("ShaderInfoLog not valid utf8")
-            );
+            gl::GetShaderInfoLog(shader, len, ptr::null_mut(), buf.as_mut_ptr() as *mut GLchar);
+            panic!("{}", str::from_utf8(&buf).expect("ShaderInfoLog not valid utf8"));
         }
     }
     shader
@@ -289,16 +281,8 @@ pub fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
             // clippy not happy with this, broke the CI:
             // error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
             // buf.set_len((len as usize) - 1); // subtract 1 to skip the trailing null character
-            gl::GetProgramInfoLog(
-                program,
-                len,
-                ptr::null_mut(),
-                buf.as_mut_ptr() as *mut GLchar,
-            );
-            panic!(
-                "{}",
-                str::from_utf8(&buf).expect("ProgramInfoLog not valid utf8")
-            );
+            gl::GetProgramInfoLog(program, len, ptr::null_mut(), buf.as_mut_ptr() as *mut GLchar);
+            panic!("{}", str::from_utf8(&buf).expect("ProgramInfoLog not valid utf8"));
         }
         program
     }
@@ -509,11 +493,7 @@ impl Painter {
             let screen_x = canvas_width as f32;
             let screen_y = canvas_height as f32;
 
-            for ClippedPrimitive {
-                clip_rect,
-                primitive,
-            } in primitives
-            {
+            for ClippedPrimitive { clip_rect, primitive } in primitives {
                 match primitive {
                     Primitive::Mesh(mesh) => {
                         if let Some(Texture { gl_id, .. }) = self.textures.get(&mesh.texture_id) {
@@ -589,16 +569,9 @@ impl Painter {
                     "Mismatch between texture size and texel count"
                 );
 
-                image
-                    .pixels
-                    .iter()
-                    .flat_map(|colour| colour.to_array())
-                    .collect()
+                image.pixels.iter().flat_map(|colour| colour.to_array()).collect()
             }
-            egui::ImageData::Font(image) => image
-                .srgba_pixels(None)
-                .flat_map(|colour| colour.to_array())
-                .collect(),
+            egui::ImageData::Font(image) => image.srgba_pixels(None).flat_map(|colour| colour.to_array()).collect(),
         };
         let texture_width = delta.image.width();
         let texture_height = delta.image.height();
@@ -773,36 +746,18 @@ impl Painter {
             let a_srgba_loc = a_srgba_loc as u32;
 
             let stride = 0;
-            gl::VertexAttribPointer(
-                a_srgba_loc,
-                4,
-                gl::UNSIGNED_BYTE,
-                gl::FALSE,
-                stride,
-                ptr::null(),
-            );
+            gl::VertexAttribPointer(a_srgba_loc, 4, gl::UNSIGNED_BYTE, gl::FALSE, stride, ptr::null());
             gl::EnableVertexAttribArray(a_srgba_loc);
 
             // --------------------------------------------------------------------
-            gl::DrawElements(
-                gl::TRIANGLES,
-                indices_len as i32,
-                gl::UNSIGNED_SHORT,
-                ptr::null(),
-            );
+            gl::DrawElements(gl::TRIANGLES, indices_len as i32, gl::UNSIGNED_SHORT, ptr::null());
             gl::DisableVertexAttribArray(a_pos_loc);
             gl::DisableVertexAttribArray(a_tc_loc);
             gl::DisableVertexAttribArray(a_srgba_loc);
         }
     }
 
-    fn generate_gl_texture2d(
-        gl_id: &mut Option<GLuint>,
-        pixels: &Vec<u8>,
-        width: i32,
-        height: i32,
-        filtering: bool,
-    ) {
+    fn generate_gl_texture2d(gl_id: &mut Option<GLuint>, pixels: &Vec<u8>, width: i32, height: i32, filtering: bool) {
         unsafe {
             if gl_id.is_none() {
                 let mut texture_id = 0;

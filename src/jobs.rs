@@ -16,7 +16,7 @@ impl<T> Job<T> {
 
     pub fn is_any_and_finished(&self) -> bool {
         let Some(handle) = &self.handle else {
-            return false
+            return false;
         };
         handle.is_finished()
     }

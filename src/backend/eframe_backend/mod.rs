@@ -30,4 +30,4 @@ pub fn run_app() {
     // Blocks the main thread.
     let _ = eframe::run_native("App", options, app_creator);
     println!("Goodbye");
-} 
+}

@@ -69,9 +69,7 @@ pub fn with_sdl2(
 ) -> (Painter, EguiStateHandler) {
     let scale = match scale {
         DpiScaling::Default => 96.0 / window.subsystem().display_dpi(0).unwrap().0,
-        DpiScaling::Custom(custom) => {
-            (96.0 / window.subsystem().display_dpi(0).unwrap().0) * custom
-        }
+        DpiScaling::Custom(custom) => (96.0 / window.subsystem().display_dpi(0).unwrap().0) * custom,
     };
     let painter = painter::Painter::new(window, scale, shader_ver);
     EguiStateHandler::new(painter)
@@ -94,27 +92,15 @@ impl EguiStateHandler {
         (painter, _self)
     }
 
-    pub fn process_input(
-        &mut self,
-        window: &sdl2::video::Window,
-        event: sdl2::event::Event,
-        painter: &mut Painter,
-    ) {
+    pub fn process_input(&mut self, window: &sdl2::video::Window, event: sdl2::event::Event, painter: &mut Painter) {
         input_to_egui(window, event, painter, self);
     }
 
-    pub fn process_output(
-        &mut self,
-        window: &sdl2::video::Window,
-        egui_output: &egui::PlatformOutput,
-    ) {
+    pub fn process_output(&mut self, window: &sdl2::video::Window, egui_output: &egui::PlatformOutput) {
         if !egui_output.copied_text.is_empty() {
             let copied_text = egui_output.copied_text.clone();
             {
-                let result = window
-                    .subsystem()
-                    .clipboard()
-                    .set_clipboard_text(&copied_text);
+                let result = window.subsystem().clipboard().set_clipboard_text(&copied_text);
                 if result.is_err() {
                     dbg!("Unable to set clipboard content to SDL clipboard.");
                 }
@@ -184,10 +170,7 @@ pub fn input_to_egui(
 
         MouseMotion { x, y, .. } => {
             state.pointer_pos = pos2(x as f32 / pixels_per_point, y as f32 / pixels_per_point);
-            state
-                .input
-                .events
-                .push(egui::Event::PointerMoved(state.pointer_pos));
+            state.input.events.push(egui::Event::PointerMoved(state.pointer_pos));
         }
 
         KeyUp {
@@ -205,17 +188,13 @@ pub fn input_to_egui(
                 _ => return,
             };
             state.modifiers = Modifiers {
-                alt: (keymod & Mod::LALTMOD == Mod::LALTMOD)
-                    || (keymod & Mod::RALTMOD == Mod::RALTMOD),
-                ctrl: (keymod & Mod::LCTRLMOD == Mod::LCTRLMOD)
-                    || (keymod & Mod::RCTRLMOD == Mod::RCTRLMOD),
-                shift: (keymod & Mod::LSHIFTMOD == Mod::LSHIFTMOD)
-                    || (keymod & Mod::RSHIFTMOD == Mod::RSHIFTMOD),
+                alt: (keymod & Mod::LALTMOD == Mod::LALTMOD) || (keymod & Mod::RALTMOD == Mod::RALTMOD),
+                ctrl: (keymod & Mod::LCTRLMOD == Mod::LCTRLMOD) || (keymod & Mod::RCTRLMOD == Mod::RCTRLMOD),
+                shift: (keymod & Mod::LSHIFTMOD == Mod::LSHIFTMOD) || (keymod & Mod::RSHIFTMOD == Mod::RSHIFTMOD),
                 mac_cmd: keymod & Mod::LGUIMOD == Mod::LGUIMOD,
 
                 //TOD: Test on both windows and mac
-                command: (keymod & Mod::LCTRLMOD == Mod::LCTRLMOD)
-                    || (keymod & Mod::LGUIMOD == Mod::LGUIMOD),
+                command: (keymod & Mod::LCTRLMOD == Mod::LCTRLMOD) || (keymod & Mod::LGUIMOD == Mod::LGUIMOD),
             };
 
             state.input.events.push(Event::Key {
@@ -242,17 +221,13 @@ pub fn input_to_egui(
                 _ => return,
             };
             state.modifiers = Modifiers {
-                alt: (keymod & Mod::LALTMOD == Mod::LALTMOD)
-                    || (keymod & Mod::RALTMOD == Mod::RALTMOD),
-                ctrl: (keymod & Mod::LCTRLMOD == Mod::LCTRLMOD)
-                    || (keymod & Mod::RCTRLMOD == Mod::RCTRLMOD),
-                shift: (keymod & Mod::LSHIFTMOD == Mod::LSHIFTMOD)
-                    || (keymod & Mod::RSHIFTMOD == Mod::RSHIFTMOD),
+                alt: (keymod & Mod::LALTMOD == Mod::LALTMOD) || (keymod & Mod::RALTMOD == Mod::RALTMOD),
+                ctrl: (keymod & Mod::LCTRLMOD == Mod::LCTRLMOD) || (keymod & Mod::RCTRLMOD == Mod::RCTRLMOD),
+                shift: (keymod & Mod::LSHIFTMOD == Mod::LSHIFTMOD) || (keymod & Mod::RSHIFTMOD == Mod::RSHIFTMOD),
                 mac_cmd: keymod & Mod::LGUIMOD == Mod::LGUIMOD,
 
                 //TOD: Test on both windows and mac
-                command: (keymod & Mod::LCTRLMOD == Mod::LCTRLMOD)
-                    || (keymod & Mod::LGUIMOD == Mod::LGUIMOD),
+                command: (keymod & Mod::LCTRLMOD == Mod::LCTRLMOD) || (keymod & Mod::LGUIMOD == Mod::LGUIMOD),
             };
 
             state.input.events.push(Event::Key {
@@ -286,10 +261,7 @@ pub fn input_to_egui(
             if sdl.keyboard().mod_state() & Mod::LCTRLMOD == Mod::LCTRLMOD
                 || sdl.keyboard().mod_state() & Mod::RCTRLMOD == Mod::RCTRLMOD
             {
-                state
-                    .input
-                    .events
-                    .push(Event::Zoom((delta.y / 125.0).exp()));
+                state.input.events.push(Event::Zoom((delta.y / 125.0).exp()));
             } else {
                 state.input.events.push(Event::Scroll(delta));
             }
@@ -305,23 +277,23 @@ pub fn translate_virtual_key_code(key: sdl2::keyboard::Keycode) -> Option<egui::
     use Keycode::*;
 
     Some(match key {
-        Left  => Key::ArrowLeft,
-        Up    => Key::ArrowUp,
+        Left => Key::ArrowLeft,
+        Up => Key::ArrowUp,
         Right => Key::ArrowRight,
-        Down  => Key::ArrowDown,
+        Down => Key::ArrowDown,
 
-        Escape    => Key::Escape,
-        Tab       => Key::Tab,
+        Escape => Key::Escape,
+        Tab => Key::Tab,
         Backspace => Key::Backspace,
-        Space     => Key::Space,
-        Return    => Key::Enter,
+        Space => Key::Space,
+        Return => Key::Enter,
 
-        Insert   => Key::Insert,
-        Home     => Key::Home,
-        Delete   => Key::Delete,
-        End      => Key::End,
+        Insert => Key::Insert,
+        Home => Key::Home,
+        Delete => Key::Delete,
+        End => Key::End,
         PageDown => Key::PageDown,
-        PageUp   => Key::PageUp,
+        PageUp => Key::PageUp,
 
         Kp0 | Num0 => Key::Num0,
         Kp1 | Num1 => Key::Num1,
@@ -392,12 +364,12 @@ pub fn translate_cursor(fused: &mut FusedCursor, cursor_icon: egui::CursorIcon) 
 }
 
 pub fn run_app() {
-    use sdl2::{video::GLProfile, event::Event};
     use sdl2::video::SwapInterval;
+    use sdl2::{event::Event, video::GLProfile};
 
-    use std::time::Instant;
-    use crate::config::Config;
     use crate::app::MovieApp;
+    use crate::config::Config;
+    use std::time::Instant;
 
     const SCREEN_WIDTH: u32 = 800;
     const SCREEN_HEIGHT: u32 = 600;
@@ -438,17 +410,14 @@ pub fn run_app() {
 
     'running: loop {
         if enable_vsync {
-            window
-                .subsystem()
-                .gl_set_swap_interval(SwapInterval::VSync)
-                .unwrap()
+            window.subsystem().gl_set_swap_interval(SwapInterval::VSync).unwrap()
         } else {
             window
                 .subsystem()
                 .gl_set_swap_interval(SwapInterval::Immediate)
                 .unwrap()
         }
-        
+
         unsafe {
             // Clear the screen to green
             gl::ClearColor(0.105, 0.105, 0.105, 1.0);

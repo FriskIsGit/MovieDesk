@@ -1,4 +1,3 @@
-
 // TODO: We should clean those things up in one way or another.
 
 #[cfg(feature = "glfw_backend")]

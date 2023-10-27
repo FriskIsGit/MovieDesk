@@ -1,9 +1,9 @@
-use std::time::Duration;
 use crate::config::Config;
 use crate::production::{Movie, Production, Series};
 use crate::series_details::{SeasonDetails, SeriesDetails};
-use ureq;
 use serde_json::Value;
+use std::time::Duration;
+use ureq;
 use ureq::{Agent, AgentBuilder};
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
@@ -30,14 +30,14 @@ impl TheMovieDB {
     pub fn new(key: String) -> Self {
         Self {
             api_key: key,
-            agent: AgentBuilder::new()
-                .timeout(Duration::from_secs(15))
-                .build()
+            agent: AgentBuilder::new().timeout(Duration::from_secs(15)).build(),
         }
     }
 
     fn new_authorized_get(&self, url: &str) -> ureq::Request {
-        let request = self.agent.get(url)
+        let request = self
+            .agent
+            .get(url)
             .set("Accept", "application/json")
             .set("Authorization", &format!("Bearer {}", self.api_key));
         request

@@ -25,13 +25,13 @@ pub struct Actor {
 }
 
 impl Actor {
-    pub fn get_gender(&self) -> &str{
+    pub fn get_gender(&self) -> &str {
         return match self.gender {
             0 => "Unset",
             1 => "Female",
             2 => "Male",
             3 => "Non-binary",
-            _ => "Unreachable"
-        }
+            _ => "Unreachable",
+        };
     }
 }
