@@ -544,19 +544,20 @@ impl ExpandedView {
         let series = &self.series.as_ref().unwrap();
         let window = egui::Window::new(&series.name)
             .open(&mut self.series_window_open)
+            .default_height(400.0)
             .resizable(true);
         let series_details = &self.series_details.as_ref().unwrap();
         window.show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                egui::ScrollArea::horizontal().show(ui, |ui| {
-                    for season in &series_details.seasons {
+            egui::ScrollArea::new([true, true]).show(ui, |ui| {
+                egui::Grid::new("expanded_view").max_col_width(100.0).show(ui, |ui| {
+                    for (i, season) in series_details.seasons.iter().enumerate() {
                         ui.vertical(|ui| {
                             //it's a bad idea to fetch posters for every season
                             if season.poster_path.is_some() {
                                 let image_url =
                                     TheMovieDB::get_full_poster_url(&season.poster_path.as_ref().unwrap(), Width::W300);
                                 let image = egui::Image::new(Uri(image_url.into())).sense(Sense::click());
-                                let poster_response = ui.add_sized([60.0, 100.0], image);
+                                let poster_response = ui.add_sized([100.0, (100.0 / 60.0) * 100.0], image);
                                 if poster_response.clicked() {
                                     self.season_details =
                                         Some(self.movie_db.get_season_details(series.id, season.season_number));
@@ -568,9 +569,14 @@ impl ExpandedView {
                                     Some(self.movie_db.get_season_details(series.id, season.season_number));
                             }
                         });
+
+                        if (i + 1) % 5 == 0 {
+                            ui.end_row()
+                        }
                     }
                 })
             });
+
             if self.season_details.is_none() {
                 return;
             }
