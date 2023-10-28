@@ -524,6 +524,7 @@ impl ExpandedView {
         self.series = Some(series);
         let movie_db = self.movie_db.clone();
         let handle = thread::spawn(move || Some(movie_db.get_series_details(id)));
+        self.season_details = None;
         self.series_details_job.set(handle);
     }
 
