@@ -1,3 +1,4 @@
+use std::cmp::min;
 use crate::config::Config;
 use crate::jobs::Job;
 use crate::production::{Movie, Production, Series, UserProduction};
@@ -6,7 +7,7 @@ use crate::themoviedb::{TheMovieDB, Width};
 
 use egui;
 use egui::ImageSource::Uri;
-use egui::{Align, Label, Layout, Sense, TopBottomPanel, Ui, Vec2, Visuals};
+use egui::{Align, Align2, include_image, Label, Layout, Sense, TopBottomPanel, Ui, Vec2, Visuals};
 
 use std::fs::File;
 use std::io::Write;
@@ -479,14 +480,17 @@ impl MovieApp {
 struct ExpandedView {
     series_window_open: bool,
     movie_window_open: bool,
+    series_window_title: String,
+    movie_window_title: String,
     series: Option<Series>,
     movie: Option<Movie>,
 
-    season_details: Option<SeasonDetails>,
-    season_details_job: Job<Option<SeasonDetails>>,
-
     series_details: Option<SeriesDetails>,
     series_details_job: Job<Option<SeriesDetails>>,
+
+    season_details: Option<SeasonDetails>,
+    season_details_job: Job<Option<SeasonDetails>>,
+    expanded_season: bool,
 
     movie_db: Arc<TheMovieDB>,
 }
@@ -496,14 +500,17 @@ impl ExpandedView {
         Self {
             series_window_open: false,
             movie_window_open: false,
+            series_window_title: "".into(),
+            movie_window_title: "".into(),
             series: None,
             movie: None,
 
-            season_details: None,
-            season_details_job: Job::empty(),
-
             series_details: None,
             series_details_job: Job::empty(),
+
+            season_details: None,
+            season_details_job: Job::empty(),
+            expanded_season: false,
 
             movie_db,
         }
@@ -511,6 +518,7 @@ impl ExpandedView {
 
     fn set_movie(&mut self, movie: Movie) {
         /*let id = movie.id;
+        let movie_window_title = movie.name.clone();
         self.movie = Some(movie);
         let movie_db = self.movie_db.clone();
         let handle = thread::spawn(move || {
@@ -521,6 +529,7 @@ impl ExpandedView {
 
     fn set_series(&mut self, series: Series) {
         let id = series.id;
+        self.series_window_title = series.name.clone();
         self.series = Some(series);
         let movie_db = self.movie_db.clone();
         let handle = thread::spawn(move || Some(movie_db.get_series_details(id)));
@@ -542,29 +551,63 @@ impl ExpandedView {
         }
         //Displayable state reached
         let series = &self.series.as_ref().unwrap();
-        let window = egui::Window::new(&series.name)
-            .open(&mut self.series_window_open)
-            .default_height(400.0)
-            .resizable(true);
         let series_details = &self.series_details.as_ref().unwrap();
+        let seasons_per_row = min(5, series_details.seasons.len());
+        let window = egui::Window::new(&self.series_window_title)
+            .open(&mut self.series_window_open)
+            .default_width((seasons_per_row * 100 + seasons_per_row * 5) as f32)
+            .default_height(300.0)
+            .resizable(true);
         window.show(ctx, |ui| {
+            if self.expanded_season && self.season_details.is_some() {
+                if ui.button("<=").clicked() {
+                    self.expanded_season = false;
+                    self.series_window_title = series.name.clone();
+                    return;
+                }
+                let season_details = self.season_details.as_ref().expect("Season details was None");
+                ui.label(format!("Watch time: {}min = {}hr", season_details.runtime_minutes(), season_details.runtime_hours()));
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            for episode in &season_details.episodes {
+                                ui.label(format!("{}# {}", episode.episode_number, episode.name));
+                            }
+                        });
+                    });
+                });
+                return;
+            }
+            ui.label(&series.overview);
+            ui.label(format!("Seasons: {}", series_details.number_of_seasons));
+            ui.label(format!("Episodes: {}", series_details.number_of_episodes));
+            ui.label(format!("Status: {}", series_details.status));
+            ui.separator();
             egui::ScrollArea::new([true, true]).show(ui, |ui| {
                 egui::Grid::new("expanded_view").max_col_width(100.0).show(ui, |ui| {
                     for (i, season) in series_details.seasons.iter().enumerate() {
                         ui.vertical(|ui| {
                             //it's a bad idea to fetch posters for every season
+                            let mut image;
                             if season.poster_path.is_some() {
                                 let image_url =
                                     TheMovieDB::get_full_poster_url(&season.poster_path.as_ref().unwrap(), Width::W300);
-                                let image = egui::Image::new(Uri(image_url.into())).sense(Sense::click());
-                                let poster_response = ui.add_sized([100.0, (100.0 / 60.0) * 100.0], image);
-                                if poster_response.clicked() {
-                                    self.season_details =
-                                        Some(self.movie_db.get_season_details(series.id, season.season_number));
-                                }
+                                image = egui::Image::new(Uri(image_url.into())).sense(Sense::click());
+                            } else {
+                                image = egui::Image::new(include_image!("../res/no_image.png")).sense(Sense::click());
+                            }
+                            let poster_response = ui.add_sized([100.0, (100.0 / 60.0) * 100.0], image);
+                            if poster_response.clicked() {
+                                self.expanded_season = true;
+                                self.series_window_title = format!("{} -> {}", self.series_window_title, season.name.clone());
+                                self.season_details =
+                                    Some(self.movie_db.get_season_details(series.id, season.season_number));
                             }
                             let label_response = ui.add(Label::new(&season.name).sense(Sense::click()));
                             if label_response.clicked() {
+                                self.expanded_season = true;
+                                self.series_window_title = format!("{} -> {}", self.series_window_title, season.name.clone());
                                 self.season_details =
                                     Some(self.movie_db.get_season_details(series.id, season.season_number));
                             }
@@ -574,21 +617,6 @@ impl ExpandedView {
                             ui.end_row()
                         }
                     }
-                })
-            });
-
-            if self.season_details.is_none() {
-                return;
-            }
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                ui.vertical(|ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        let season_details = self.season_details.as_ref().expect("Season details was None");
-                        for episode in &season_details.episodes {
-                            ui.label(format!("{}# {}", episode.episode_number, episode.name));
-                        }
-                    });
                 });
             });
         });

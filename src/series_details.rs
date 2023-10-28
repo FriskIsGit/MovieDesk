@@ -6,7 +6,7 @@ pub struct SeriesDetails {
     pub number_of_seasons: u32,
     pub number_of_episodes: u32,
     pub status: String, //is finished?
-    pub episode_run_time: Vec<u32>,
+    //pub episode_run_time: Vec<u32>, this is broken
     pub seasons: Vec<Season>,
 }
 
@@ -42,6 +42,18 @@ pub struct SeasonDetails {
 impl SeasonDetails {
     pub fn parse(json: &str) -> SeasonDetails {
         serde_json::from_str(json).expect("Failed to deserialize a SeasonDetails object")
+    }
+    pub fn runtime_minutes(&self) -> u32 {
+        let mut minutes = 0;
+        for episode in &self.episodes {
+            if let Some(runtime) = episode.runtime {
+                minutes += runtime;
+            }
+        }
+        minutes
+    }
+    pub fn runtime_hours(&self) -> f32 {
+        (self.runtime_minutes() / 60) as f32
     }
 }
 
