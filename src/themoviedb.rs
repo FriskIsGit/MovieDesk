@@ -19,18 +19,21 @@ pub enum Width {
     ORIGINAL,
 }
 
-#[derive(Clone)]
 pub struct TheMovieDB {
     api_key: String,
     agent: Agent,
+    use_cache: bool,
+    query_to_prod: VecMap<String, Vec<Production>>,
     // cache object outputs to avoid making multiple requests for the same data
 }
 
 impl TheMovieDB {
-    pub fn new(key: String) -> Self {
+    pub fn new(key: String, use_cache: bool) -> Self {
         Self {
             api_key: key,
             agent: AgentBuilder::new().timeout(Duration::from_secs(15)).build(),
+            use_cache,
+            query_to_prod: VecMap::new(),
         }
     }
 
@@ -131,3 +134,41 @@ impl TheMovieDB {
         return buf;
     }
 }
+
+struct VecMap<K, V>{
+    keys_to_values: Vec<(K, V)>,
+}
+impl<K: PartialEq, V> VecMap<K, V> {
+    pub fn new() -> VecMap<K, V>{
+        Self {
+            keys_to_values: vec![],
+        }
+    }
+    pub fn put(&mut self, key: K, value: V){
+        self.keys_to_values.push((key, value));
+    }
+    pub fn get(&self, key: K) -> Option<&V> {
+        for pair in &self.keys_to_values {
+            if pair.0 == key {
+                return Some(&pair.1);
+            }
+        }
+        None
+    }
+    pub fn remove(&mut self, key: K) {
+        let mut index: i64 = -1;
+        for (i, pair) in self.keys_to_values.iter().enumerate() {
+            if pair.0 == key {
+                index = i as i64;
+                break;
+            }
+        }
+        if index != -1 {
+            self.keys_to_values.remove(index as usize);
+        }
+    }
+    pub fn size(&self) -> usize{
+        self.keys_to_values.len()
+    }
+}
+

@@ -42,10 +42,11 @@ impl MovieApp {
         // Implement dynamic scale changing?
         ctx.set_pixels_per_point(1.66);
 
-        // YOINK! We are not going to need in the config anymore.
+        // YOINK! We are not going to these anymore.
         let key = std::mem::take(&mut config.api_key);
+        let cache = std::mem::take(&mut config.enable_cache);
 
-        let movie_db = Arc::new(TheMovieDB::new(key));
+        let movie_db = Arc::new(TheMovieDB::new(key, cache));
         Self {
             search: String::new(),
             show_adult_content: config.include_adult,
