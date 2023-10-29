@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex, MutexGuard};
 use crate::config::Config;
 use crate::production::{Movie, Production, Series};
 use crate::series_details::{SeasonDetails, SeriesDetails};
@@ -46,7 +47,13 @@ impl TheMovieDB {
         request
     }
 
-    pub fn search_production(&self, query: &str) -> Vec<Production> {
+    pub fn search_production(&mut self, query: String) -> Arc<Vec<Production>> {
+        if self.use_cache {
+            if let Some(prods) = self.query_to_prod.get(&query) {
+                println!("FOUND {} IN CACHE", query);
+                return prods;
+            }
+        }
         let url = format!("{SEARCH_MULTI_URL}?query={}&include_adult={}", query, true);
         let request = self.new_authorized_get(&url);
 
@@ -66,7 +73,7 @@ impl TheMovieDB {
         let arr: Value = payload["results"].to_owned();
         if !arr.is_array() {
             eprintln!("Results are not in an array");
-            return Vec::new();
+            return Vec::new().into();
         }
         let list = arr.as_array().unwrap();
         let mut productions: Vec<Production> = Vec::with_capacity(list.len());
@@ -80,7 +87,13 @@ impl TheMovieDB {
                 productions.push(Production::Movie(movie));
             }
         }
-        productions
+
+        if self.use_cache {
+            let arc_vec: Arc<Vec<Production>> = productions.into();
+            self.query_to_prod.put_shared(query, arc_vec.clone());
+            return arc_vec;
+        }
+        productions.into()
     }
 
     pub fn get_full_poster_url(poster: &String, width: Width) -> String {
@@ -136,7 +149,7 @@ impl TheMovieDB {
 }
 
 struct VecMap<K, V>{
-    keys_to_values: Vec<(K, V)>,
+    keys_to_values: Vec<(K, Arc<V>)>,
 }
 impl<K: PartialEq, V> VecMap<K, V> {
     pub fn new() -> VecMap<K, V>{
@@ -144,13 +157,16 @@ impl<K: PartialEq, V> VecMap<K, V> {
             keys_to_values: vec![],
         }
     }
-    pub fn put(&mut self, key: K, value: V){
+    pub fn put_value(&mut self, key: K, value: V){
+        self.keys_to_values.push((key, value.into()));
+    }
+    pub fn put_shared(&mut self, key: K, value: Arc<V>){
         self.keys_to_values.push((key, value));
     }
-    pub fn get(&self, key: K) -> Option<&V> {
+    pub fn get(&self, key: &K) -> Option<Arc<V>> {
         for pair in &self.keys_to_values {
-            if pair.0 == key {
-                return Some(&pair.1);
+            if pair.0 == *key {
+                return Some(pair.1.clone());
             }
         }
         None
@@ -172,3 +188,29 @@ impl<K: PartialEq, V> VecMap<K, V> {
     }
 }
 
+#[derive(Debug)]
+pub struct ArcMutex<T> {
+    data: Arc<Mutex<T>>
+}
+impl<T> ArcMutex<T> {
+    pub fn new(value: T) -> Self{
+        Self{
+            data: Arc::new(Mutex::new(value))
+        }
+    }
+    // Always returns the guard regardless of poisoning
+    pub fn guard(&self) -> MutexGuard<T> {
+        return match self.data.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+    }
+}
+impl<T> Clone for ArcMutex<T> {
+    // deriving Clone can result in unsatisfied trait bounds
+    fn clone(&self) -> Self {
+        Self{
+            data: self.data.clone()
+        }
+    }
+}

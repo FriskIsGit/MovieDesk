@@ -3,7 +3,7 @@ use crate::config::Config;
 use crate::jobs::Job;
 use crate::production::{Movie, Production, Series, UserProduction};
 use crate::series_details::{SeasonDetails, SeriesDetails};
-use crate::themoviedb::{TheMovieDB, Width};
+use crate::themoviedb::{ArcMutex, TheMovieDB, Width};
 
 use egui;
 use egui::ImageSource::Uri;
@@ -18,7 +18,7 @@ pub struct MovieApp {
     // Left panel
     search: String,
     show_adult_content: bool,
-    search_productions: Vec<Production>,
+    search_productions: Arc<Vec<Production>>,
 
     // Right and center panel
     user_productions: Vec<UserProduction>,
@@ -27,10 +27,10 @@ pub struct MovieApp {
     // Expanded view state
     expanded_view: ExpandedView,
     // Jobs
-    fetch_productions_job: Job<Vec<Production>>,
+    fetch_productions_job: Job<Arc<Vec<Production>>>,
 
     // Not a part of the layout
-    movie_db: Arc<TheMovieDB>,
+    movie_db: ArcMutex<TheMovieDB>,
     config: Config,
 }
 
@@ -46,11 +46,11 @@ impl MovieApp {
         let key = std::mem::take(&mut config.api_key);
         let cache = std::mem::take(&mut config.enable_cache);
 
-        let movie_db = Arc::new(TheMovieDB::new(key, cache));
+        let movie_db = ArcMutex::new(TheMovieDB::new(key, cache));
         Self {
             search: String::new(),
             show_adult_content: config.include_adult,
-            search_productions: Vec::new(),
+            search_productions: Vec::new().into(),
 
             user_productions: Vec::new(),
             selected_user_production: None,
@@ -126,7 +126,7 @@ impl MovieApp {
                 if response.lost_focus() && pressed_enter {
                     let movie_db = self.movie_db.clone();
                     let search = self.search.to_owned();
-                    let handle = thread::spawn(move || movie_db.search_production(&search));
+                    let handle = thread::spawn(move || movie_db.guard().search_production(search));
                     self.fetch_productions_job.set(handle);
                     search_triggered = true;
                 }
@@ -322,7 +322,7 @@ impl MovieApp {
                         let resource = TheMovieDB::get_full_poster_url(&poster, Width::ORIGINAL);
                         let movie_db = self.movie_db.clone();
                         thread::spawn(move || {
-                            let bytes = movie_db.download_resource(resource.as_str());
+                            let bytes = movie_db.guard().download_resource(resource.as_str());
                             let mut file = File::create(&poster[1..]).expect("Unable to create file");
                             // Write a slice of bytes to the file
                             file.write_all(&bytes).unwrap();
@@ -418,7 +418,7 @@ impl MovieApp {
                         let resource = TheMovieDB::get_full_poster_url(&poster, Width::ORIGINAL);
                         let movie_db = self.movie_db.clone();
                         thread::spawn(move || {
-                            let bytes = movie_db.download_resource(resource.as_str());
+                            let bytes = movie_db.guard().download_resource(resource.as_str());
                             let mut file = File::create(&poster[1..]).expect("Unable to create file");
                             // Write a slice of bytes to the file
                             file.write_all(&bytes).unwrap();
@@ -493,11 +493,11 @@ struct ExpandedView {
     season_details_job: Job<Option<SeasonDetails>>,
     expanded_season: bool,
 
-    movie_db: Arc<TheMovieDB>,
+    movie_db: ArcMutex<TheMovieDB>,
 }
 
 impl ExpandedView {
-    pub fn new(movie_db: Arc<TheMovieDB>) -> Self {
+    pub fn new(movie_db: ArcMutex<TheMovieDB>) -> Self {
         Self {
             series_window_open: false,
             movie_window_open: false,
@@ -533,7 +533,7 @@ impl ExpandedView {
         self.series_window_title = series.name.clone();
         self.series = Some(series);
         let movie_db = self.movie_db.clone();
-        let handle = thread::spawn(move || Some(movie_db.get_series_details(id)));
+        let handle = thread::spawn(move || Some(movie_db.guard().get_series_details(id)));
         self.season_details = None;
         self.series_details_job.set(handle);
     }
@@ -603,14 +603,14 @@ impl ExpandedView {
                                 self.expanded_season = true;
                                 self.series_window_title = format!("{} -> {}", self.series_window_title, season.name.clone());
                                 self.season_details =
-                                    Some(self.movie_db.get_season_details(series.id, season.season_number));
+                                    Some(self.movie_db.guard().get_season_details(series.id, season.season_number));
                             }
                             let label_response = ui.add(Label::new(&season.name).sense(Sense::click()));
                             if label_response.clicked() {
                                 self.expanded_season = true;
                                 self.series_window_title = format!("{} -> {}", self.series_window_title, season.name.clone());
                                 self.season_details =
-                                    Some(self.movie_db.get_season_details(series.id, season.season_number));
+                                    Some(self.movie_db.guard().get_season_details(series.id, season.season_number));
                             }
                         });
 
