@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -8,12 +10,6 @@ pub struct SeriesDetails {
     pub status: String, //is finished?
     //pub episode_run_time: Vec<u32>, this is broken
     pub seasons: Vec<Season>,
-}
-
-impl SeriesDetails {
-    pub fn parse(json: &str) -> SeriesDetails {
-        serde_json::from_str(json).expect("Failed to deserialize a SeriesDetails object")
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -40,20 +36,25 @@ pub struct SeasonDetails {
 }
 
 impl SeasonDetails {
-    pub fn parse(json: &str) -> SeasonDetails {
-        serde_json::from_str(json).expect("Failed to deserialize a SeasonDetails object")
-    }
-    pub fn runtime_minutes(&self) -> u32 {
-        let mut minutes = 0;
-        for episode in &self.episodes {
-            if let Some(runtime) = episode.runtime {
-                minutes += runtime;
-            }
+    pub fn runtime(&self) -> Runtime {
+        let minutes = self.episodes.iter().filter_map(|ep| ep.runtime).sum();
+        let hours = minutes as f32 / 60.0;
+
+        Runtime {
+            minutes,
+            hours
         }
-        minutes
     }
-    pub fn runtime_hours(&self) -> f32 {
-        (self.runtime_minutes() / 60) as f32
+}
+
+pub struct Runtime {
+    minutes: u32,
+    hours: f32,
+}
+
+impl Display for Runtime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}min {:.2}hr", self.minutes, self.hours)
     }
 }
 

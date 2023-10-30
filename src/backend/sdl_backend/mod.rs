@@ -451,24 +451,17 @@ pub fn run_app() {
         painter.paint_jobs(None, textures_delta, paint_jobs);
         window.gl_swap_window();
 
-        if !repaint_after.is_zero() {
-            if let Some(event) = event_pump.wait_event_timeout(5) {
-                match event {
-                    Event::Quit { .. } => break 'running,
-                    _ => {
-                        // Process input event
-                        egui_state.process_input(&window, event, &mut painter);
-                    }
-                }
-            }
-        } else {
-            for event in event_pump.poll_iter() {
-                match event {
-                    Event::Quit { .. } => break 'running,
-                    _ => {
-                        // Process input event
-                        egui_state.process_input(&window, event, &mut painter);
-                    }
+        let mut iter: Box<dyn Iterator<Item = _>> = match repaint_after.is_zero() {
+            false => Box::new(event_pump.wait_event_timeout(5).into_iter()),
+            true => Box::new(event_pump.poll_iter()),
+        };
+
+        for event in iter {
+            match event {
+                Event::Quit { .. } => break 'running,
+                _ => {
+                    // Process input event
+                    egui_state.process_input(&window, event, &mut painter);
                 }
             }
         }

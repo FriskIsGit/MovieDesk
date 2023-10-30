@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use std::fs;
+use std::fs::read_to_string;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
@@ -12,9 +13,7 @@ pub struct Config {
 
 impl Config {
     pub fn read_config(path: &str) -> Config {
-        let contents: String = fs::read_to_string(path).expect("File not found");
-        let a_str: &str = contents.as_str();
-        let config: Config = serde_json::from_str(a_str).expect("Erroneous config file");
-        config
+        let contents = read_to_string(path).expect("File not found");
+        serde_json::from_str(&contents).expect("Erroneous config file")
     }
 }
