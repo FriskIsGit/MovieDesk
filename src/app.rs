@@ -4,9 +4,9 @@ use crate::production::{Movie, Production, Series, UserProduction};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 use std::cmp::min;
+use std::collections::HashMap;
 use std::rc::Rc;
 
-use ahash::HashMap;
 use egui;
 use egui::ImageSource::Uri;
 use egui::{include_image, Align, Align2, Label, Layout, Sense, TopBottomPanel, Ui, Vec2, Visuals};
