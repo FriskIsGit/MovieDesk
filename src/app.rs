@@ -486,8 +486,8 @@ struct ExpandedView {
     series: Option<Series>,
     movie: Option<Movie>,
 
-    series_details: Option<SeriesDetails>,
-    series_details_job: Job<Option<SeriesDetails>>,
+    series_details: Option<Arc<SeriesDetails>>,
+    series_details_job: Job<Option<Arc<SeriesDetails>>>,
 
     season_details: Option<SeasonDetails>,
     season_details_job: Job<Option<SeasonDetails>>,

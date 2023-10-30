@@ -25,6 +25,7 @@ pub struct TheMovieDB {
     agent: Agent,
     use_cache: bool,
     query_to_prod: VecMap<String, Vec<Production>>,
+    id_to_series_details: VecMap<u32, SeriesDetails>,
     // cache object outputs to avoid making multiple requests for the same data
 }
 
@@ -35,6 +36,7 @@ impl TheMovieDB {
             agent: AgentBuilder::new().timeout(Duration::from_secs(15)).build(),
             use_cache,
             query_to_prod: VecMap::new(),
+            id_to_series_details: VecMap::new(),
         }
     }
 
@@ -107,7 +109,13 @@ impl TheMovieDB {
         format!("{IMAGE_URL}{size}{poster}")
     }
 
-    pub fn get_series_details(&self, id: u32) -> SeriesDetails {
+    pub fn get_series_details(&mut self, id: u32) -> Arc<SeriesDetails> {
+        if self.use_cache {
+            if let Some(series_details) = self.id_to_series_details.get(&id) {
+                println!("FOUND {} IN CACHE", id);
+                return series_details;
+            }
+        }
         let url = format!("{SERIES_DETAILS_URL}{id}");
         let request = self.new_authorized_get(&url);
 
@@ -118,7 +126,13 @@ impl TheMovieDB {
         };
 
         let json = response.into_string().unwrap();
-        SeriesDetails::parse(json.as_str())
+        let series_details = SeriesDetails::parse(json.as_str());
+        if self.use_cache {
+            let arc_vec: Arc<SeriesDetails> = series_details.into();
+            self.id_to_series_details.put_shared(id, arc_vec.clone());
+            return arc_vec;
+        }
+        series_details.into()
     }
 
     pub fn get_season_details(&self, series_id: u32, season_number: u32) -> SeasonDetails {
