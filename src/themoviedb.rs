@@ -5,6 +5,7 @@ use crate::series_details::{SeasonDetails, SeriesDetails};
 use serde_json::Value;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
+use egui::TextBuffer;
 use ureq;
 use ureq::{Agent, AgentBuilder};
 
@@ -62,10 +63,10 @@ impl TheMovieDB {
                 println!("status: {}", status)
             }
 
-            let json_response = response.into_string().unwrap().to_owned();
+            let json_response = response.into_string().unwrap().take();
 
-            let payload: Value = serde_json::from_str(json_response.as_str()).unwrap();
-            let mut arr: Value = payload["results"].to_owned();
+            let mut payload: Value = serde_json::from_str(json_response.as_str()).unwrap();
+            let mut arr: Value = payload["results"].take();
             if !arr.is_array() {
                 eprintln!("Results are not in an array");
                 return (query, vec![]);

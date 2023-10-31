@@ -4,9 +4,9 @@ use crate::production::{Movie, Production, Series, UserProduction};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 use std::cmp::min;
+use std::collections::HashMap;
 use std::rc::Rc;
 
-use ahash::HashMap;
 use egui;
 use egui::ImageSource::Uri;
 use egui::{include_image, Align, Align2, Label, Layout, Sense, TopBottomPanel, Ui, Vec2, Visuals};
@@ -259,7 +259,7 @@ impl MovieApp {
 
             ui.label("Your notes:");
             ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                ui.text_edit_multiline(&mut entry.user_note);
+                ui.text_edit_multiline(&mut entry.note);
             });
         });
     }
@@ -296,7 +296,7 @@ impl MovieApp {
                         if !exists {
                             let new_data = UserProduction {
                                 production: Production::Movie(movie.clone()),
-                                user_note: String::new(),
+                                note: String::new(),
                                 user_rating: 0.0,
                             };
                             self.user_productions.push(new_data);
@@ -386,7 +386,7 @@ impl MovieApp {
                         if !exists {
                             let new_data = UserProduction {
                                 production: Production::Series(series.clone()),
-                                user_note: String::new(),
+                                note: String::new(),
                                 user_rating: 0.0,
                             };
                             self.user_productions.push(new_data);
