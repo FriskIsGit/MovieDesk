@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::BufReader;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -89,7 +89,7 @@ pub fn deserialize_user_productions() -> (Vec<UserSeries>, Vec<UserMovie>){
     )
 }
 
-/**
+/*
 Serialization:
 user_prod.json
 {

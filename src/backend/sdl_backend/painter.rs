@@ -1,10 +1,10 @@
 extern crate gl;
 extern crate sdl2;
 
-use ahash::AHashMap;
 use core::mem;
 use core::ptr;
 use core::str;
+use std::collections::HashMap;
 use egui::{
     epaint::{Color32, Mesh, Primitive},
     vec2, ClippedPrimitive, Pos2, Rect,
@@ -230,7 +230,7 @@ pub struct Painter {
     color_buffer: GLuint,
     // Call fence for sdl vsync so the CPU won't heat up if there's no heavy activity.
     pub gl_sync_fence: GLsync,
-    textures: AHashMap<egui::TextureId, Texture>,
+    textures: HashMap<egui::TextureId, Texture>,
     pub pixels_per_point: f32,
     pub canvas_size: (u32, u32),
     pub screen_rect: Rect,

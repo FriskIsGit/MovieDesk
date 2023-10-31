@@ -451,7 +451,7 @@ pub fn run_app() {
         painter.paint_jobs(None, textures_delta, paint_jobs);
         window.gl_swap_window();
 
-        let mut iter: Box<dyn Iterator<Item = _>> = match repaint_after.is_zero() {
+        let iter: Box<dyn Iterator<Item = _>> = match repaint_after.is_zero() {
             false => Box::new(event_pump.wait_event_timeout(5).into_iter()),
             true => Box::new(event_pump.poll_iter()),
         };

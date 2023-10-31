@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 # Backend libraries
-ahash  = { version = "0.8.3",  optional = true }
 gl     = { version = "0.14.0", optional = true }
 sdl2   = { version = "0.35.2", optional = true }
 # TODO: Just take entire source code and put it in the backend directory
@@ -30,6 +29,6 @@ open = "5.0.0"
 
 [features]
 default = [ "sdl_backend" ]
-sdl_backend = [ "dep:sdl2", "dep:gl", "dep:ahash" ]
+sdl_backend = [ "dep:sdl2", "dep:gl" ]
 glfw_backend = [ "dep:glfw", "dep:gl" ]
 eframe_backend = [ "dep:eframe" ]

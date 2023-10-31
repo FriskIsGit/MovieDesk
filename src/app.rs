@@ -1,20 +1,15 @@
 use crate::config::Config;
-use crate::jobs::{Job, Job2};
+use crate::jobs::Job2;
 use crate::production::{Movie, Production, Series, UserProduction};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
+
 use std::cmp::min;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use egui;
 use egui::ImageSource::Uri;
-use egui::{include_image, Align, Align2, Label, Layout, Sense, TopBottomPanel, Ui, Vec2, Visuals};
-
-use std::fs::File;
-use std::io::Write;
-use std::sync::Arc;
-use std::thread;
+use egui::{include_image, Align, Label, Layout, Sense, TopBottomPanel, Ui, Vec2, Visuals};
 
 pub struct MovieApp {
     // Left panel
@@ -47,9 +42,8 @@ impl MovieApp {
 
         // YOINK! We are not going to these anymore.
         let key = std::mem::take(&mut config.api_key);
-        let cache = std::mem::take(&mut config.enable_cache);
 
-        let movie_db = TheMovieDB::new(key, cache);
+        let movie_db = TheMovieDB::new(key, config.enable_cache);
         Self {
             search: String::new(),
             show_adult_content: config.include_adult,
@@ -176,7 +170,7 @@ impl MovieApp {
                             Production::Movie(movie) => {
                                 if movie.poster_path.is_some() {
                                     let image_url = TheMovieDB::get_full_poster_url(
-                                        &movie.poster_path.as_ref().unwrap(),
+                                        movie.poster_path.as_ref().unwrap(),
                                         Width::W300,
                                     );
 
@@ -187,7 +181,7 @@ impl MovieApp {
                             Production::Series(series) => {
                                 if series.poster_path.is_some() {
                                     let image_url = TheMovieDB::get_full_poster_url(
-                                        &series.poster_path.as_ref().unwrap(),
+                                        series.poster_path.as_ref().unwrap(),
                                         Width::W300,
                                     );
 
@@ -325,7 +319,7 @@ impl MovieApp {
 
                     if ui.button("Download poster").clicked() && movie.poster_path.is_some() {
                         let poster = movie.poster_path.as_ref().unwrap();
-                        let resource = TheMovieDB::get_full_poster_url(&poster, Width::ORIGINAL);
+                        let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
                         self.movie_db.download_poster(&resource, &poster[1..]);
                     }
 
@@ -508,7 +502,7 @@ impl ExpandedView {
         }
     }
 
-    fn set_movie(&mut self, movie: Movie) {
+    fn set_movie(&mut self, _movie: Movie) {
         /*let id = movie.id;
         let movie_window_title = movie.name.clone();
         self.movie = Some(movie);

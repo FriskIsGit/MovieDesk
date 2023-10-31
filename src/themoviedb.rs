@@ -1,9 +1,7 @@
-use crate::config::Config;
 use crate::jobs::Job2;
-use crate::production::{Movie, Production, Series};
+use crate::production::Production;
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use serde_json::Value;
-use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 use egui::TextBuffer;
 use ureq;
@@ -31,7 +29,7 @@ pub struct TheMovieDB {
 }
 
 impl TheMovieDB {
-    pub fn new(key: String, use_cache: bool) -> Self {
+    pub fn new(key: String, _use_cache: bool) -> Self {
         Self {
             api_key: key,
             agent: AgentBuilder::new().timeout(Duration::from_secs(15)).build(),
@@ -71,7 +69,7 @@ impl TheMovieDB {
                 eprintln!("Results are not in an array");
                 return (query, vec![]);
             }
-            let mut list = arr.as_array_mut().unwrap();
+            let list = arr.as_array_mut().unwrap();
             let mut productions = Vec::with_capacity(list.len());
 
             for prod_obj in list {
@@ -145,17 +143,19 @@ impl TheMovieDB {
     }
 }
 
+#[allow(dead_code)]
 struct VecMap<K, V> {
     keys_to_values: Vec<(K, V)>,
 }
 
+#[allow(dead_code)]
 impl<K: PartialEq, V> VecMap<K, V> {
     pub fn new() -> VecMap<K, V> {
         Self { keys_to_values: vec![] }
     }
 
     pub fn put_value(&mut self, key: K, value: V) {
-        self.keys_to_values.push((key, value.into()));
+        self.keys_to_values.push((key, value));
     }
 
     // pub fn put_shared(&mut self, key: K, value: Arc<V>){
@@ -181,32 +181,3 @@ impl<K: PartialEq, V> VecMap<K, V> {
         self.keys_to_values.len()
     }
 }
-
-// #[derive(Debug)]
-// pub struct ArcMutex<T> {
-//     data: Arc<Mutex<T>>,
-// }
-// impl<T> ArcMutex<T> {
-//     pub fn new(value: T) -> Self {
-//         Self {
-//             data: Arc::new(Mutex::new(value)),
-//         }
-//     }
-
-//     // Always returns the guard regardless of poisoning
-//     pub fn guard(&self) -> MutexGuard<T> {
-//         return match self.data.lock() {
-//             Ok(guard) => guard,
-//             Err(poisoned) => poisoned.into_inner(),
-//         };
-//     }
-// }
-
-// impl<T> Clone for ArcMutex<T> {
-//     // deriving Clone can result in unsatisfied trait bounds
-//     fn clone(&self) -> Self {
-//         Self {
-//             data: self.data.clone(),
-//         }
-//     }
-// }
