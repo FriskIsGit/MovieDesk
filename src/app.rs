@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::jobs::Job2;
+use crate::jobs::Job;
 use crate::production::{Movie, Production, Series, UserProduction};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
@@ -18,7 +18,7 @@ pub struct MovieApp {
 
     search_productions: Option<Rc<[Production]>>,
     search_cache: HashMap<String, Rc<[Production]>>,
-    fetch_productions_job: Job2<(String, Vec<Production>)>,
+    fetch_productions_job: Job<(String, Vec<Production>)>,
 
     // Right and center panel
     user_productions: Vec<UserProduction>,
@@ -51,7 +51,7 @@ impl MovieApp {
             show_adult_content: config.include_adult,
             search_productions: None,
             search_cache: HashMap::default(),
-            fetch_productions_job: Job2::Empty,
+            fetch_productions_job: Job::Empty,
 
             user_productions: Vec::new(),
             selected_user_production: None,
@@ -498,8 +498,8 @@ struct ExpandedView {
     series: Option<Series>,
     movie: Option<Movie>,
 
-    series_details: Job2<SeriesDetails>,
-    season_details: Job2<SeasonDetails>,
+    series_details: Job<SeriesDetails>,
+    season_details: Job<SeasonDetails>,
 
     expanded_season: bool,
 }
@@ -514,8 +514,8 @@ impl ExpandedView {
             series: None,
             movie: None,
 
-            series_details: Job2::Empty,
-            season_details: Job2::Empty,
+            series_details: Job::Empty,
+            season_details: Job::Empty,
 
             expanded_season: false,
         }
@@ -538,7 +538,7 @@ impl ExpandedView {
         self.series = Some(series);
 
         self.series_details = movie_db.get_series_details(id);
-        self.season_details = Job2::Empty;
+        self.season_details = Job::Empty;
         self.series_window_open = true;
     }
 

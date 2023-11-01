@@ -1,57 +1,39 @@
 use std::thread;
 use std::thread::JoinHandle;
 
-pub struct Job<T> {
-    handle: Option<JoinHandle<T>>,
-}
-
-impl<T> Job<T> {
-    pub fn empty() -> Self {
-        Self { handle: None }
-    }
-
-    pub fn set(&mut self, handle: JoinHandle<T>) {
-        self.handle = Some(handle);
-    }
-
-    pub fn poll(&mut self) -> Option<T> {
-        let is_finished = self.handle.as_ref().map(|h| h.is_finished()).unwrap_or(false);
-
-        match is_finished {
-            true => self.handle.take().and_then(|h| h.join().ok()),
-            false => None,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Job2<T> {
+#[derive(Debug, Default)]
+pub enum Job<T> {
     Done(T),
-    InFlight(Option<JoinHandle<T>>),
+    InProgress(JoinHandle<T>),
+    #[default]
     Empty,
 }
 
-impl<T> Job2<T> {
+impl<T> Job<T> {
     pub fn new<F>(f: F) -> Self
     where
         F: FnOnce() -> T,
         F: Send + 'static,
         T: Send + 'static,
     {
-        Self::InFlight(Some(thread::spawn(f)))
+        Self::InProgress(thread::spawn(f))
     }
 
     pub fn poll_owned(&mut self) -> Option<T> {
-        match self {
-            Self::Done(_) => unreachable!(),
-            Self::Empty => None,
-            Self::InFlight(Some(handle)) if !handle.is_finished() => None,
-            Self::InFlight(None) => None,
-            Self::InFlight(handle) => {
-                let val = handle.take()?.join().ok()?;
-                *self = Self::Empty;
-                Some(val)
+        let current_job = std::mem::take(self);
+        match current_job {
+            Self::Done(data) => Some(data),
+            Self::InProgress(handle) => {
+                if handle.is_finished() {
+                    let value = handle.join().unwrap();
+                    *self = Self::Done(value);
+                } else {
+                    *self = Self::InProgress(handle)
+                }
+
+                None
             }
+            Self::Empty => None,
         }
     }
 
@@ -59,14 +41,62 @@ impl<T> Job2<T> {
         match self {
             Self::Done(val) => Some(val),
             Self::Empty => None,
-            Self::InFlight(Some(handle)) if !handle.is_finished() => None,
-            Self::InFlight(None) => None,
-            Self::InFlight(handle) => {
-                let val = handle.take()?.join().ok()?;
-                *self = Self::Done(val);
-                let Self::Done(val) = self else { unreachable!() };
-                Some(val)
+            Self::InProgress(handle) if !handle.is_finished() => None,
+            Self::InProgress(_) => {
+                let current_job = std::mem::take(self);
+                let Self::InProgress(handle) = current_job else {
+                    unreachable!();
+                };
+                let value = handle.join().unwrap();
+                *self = Self::Done(value);
+                None
             }
         }
     }
 }
+
+// #[derive(Debug)]
+// pub enum Job<T> {
+//     Done(T),
+//     InProgress(Option<JoinHandle<T>>),
+//     Empty,
+// }
+//
+// impl<T> Job<T> {
+//     pub fn new<F>(f: F) -> Self
+//     where
+//         F: FnOnce() -> T,
+//         F: Send + 'static,
+//         T: Send + 'static,
+//     {
+//         Self::InProgress(Some(thread::spawn(f)))
+//     }
+//
+//     pub fn poll_owned(&mut self) -> Option<T> {
+//         match self {
+//             Self::Done(_) => unreachable!(),
+//             Self::Empty => None,
+//             Self::InProgress(Some(handle)) if !handle.is_finished() => None,
+//             Self::InProgress(None) => None,
+//             Self::InProgress(handle) => {
+//                 let val = handle.take()?.join().ok()?;
+//                 *self = Self::Empty;
+//                 Some(val)
+//             }
+//         }
+//     }
+//
+//     pub fn poll(&mut self) -> Option<&T> {
+//         match self {
+//             Self::Done(val) => Some(val),
+//             Self::Empty => None,
+//             Self::InProgress(Some(handle)) if !handle.is_finished() => None,
+//             Self::InProgress(None) => None,
+//             Self::InProgress(handle) => {
+//                 let val = handle.take()?.join().ok()?;
+//                 *self = Self::Done(val);
+//                 None
+//             }
+//         }
+//     }
+// }
