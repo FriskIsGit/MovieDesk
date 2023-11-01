@@ -1,4 +1,4 @@
-use crate::jobs::Job2;
+use crate::jobs::Job;
 use crate::production::Production;
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use serde_json::Value;
@@ -46,11 +46,11 @@ impl TheMovieDB {
             .set("Authorization", &format!("Bearer {}", self.api_key))
     }
 
-    pub fn search_production(&mut self, query: String) -> Job2<(String, Vec<Production>)> {
+    pub fn search_production(&mut self, query: String) -> Job<(String, Vec<Production>)> {
         let url = format!("{SEARCH_MULTI_URL}?query={}&include_adult={}", query, true);
         let request = self.new_authorized_get(&url);
 
-        Job2::new(move || {
+        Job::new(move || {
             println!("Executing request..");
             let Ok(response) = request.call() else {
                 panic!("Error on sending request");
@@ -98,11 +98,11 @@ impl TheMovieDB {
         format!("{IMAGE_URL}{size}{poster}")
     }
 
-    pub fn get_series_details(&self, id: u32) -> Job2<SeriesDetails> {
+    pub fn get_series_details(&self, id: u32) -> Job<SeriesDetails> {
         let url = format!("{SERIES_DETAILS_URL}{id}");
         let request = self.new_authorized_get(&url);
 
-        Job2::new(move || {
+        Job::new(move || {
             println!("Executing request..");
 
             let Ok(response) = request.call() else {
@@ -113,11 +113,11 @@ impl TheMovieDB {
         })
     }
 
-    pub fn get_season_details(&self, series_id: u32, season_number: u32) -> Job2<SeasonDetails> {
+    pub fn get_season_details(&self, series_id: u32, season_number: u32) -> Job<SeasonDetails> {
         let url = format!("{SERIES_DETAILS_URL}{series_id}/season/{season_number}");
         let request = self.new_authorized_get(&url);
 
-        Job2::new(move || {
+        Job::new(move || {
             println!("Executing request..");
             let Ok(response) = request.call() else {
                 panic!("Error on sending request");
