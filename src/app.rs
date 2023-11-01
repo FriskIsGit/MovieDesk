@@ -23,6 +23,8 @@ pub struct MovieApp {
     // Right and center panel
     user_productions: Vec<UserProduction>,
     selected_user_production: Option<usize>,
+    selected_season: String,
+    selected_episode: String,
 
     // Expanded view state
     expanded_view: ExpandedView,
@@ -53,6 +55,8 @@ impl MovieApp {
 
             user_productions: Vec::new(),
             selected_user_production: None,
+            selected_season: "S1".into(),
+            selected_episode: "ep1".into(),
 
             expanded_view: ExpandedView::new(),
 
@@ -235,6 +239,21 @@ impl MovieApp {
                         let image = egui::Image::new(Uri(image_url.into()));
                         ui.add_sized([100.0, 100.0], image);
                     }
+
+                    egui::ComboBox::from_label("Select season!")
+                        .selected_text(format!("{}", self.selected_season))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.selected_season, "S1".to_string(), "S1");
+                            ui.selectable_value(&mut self.selected_season, "S2".to_string(), "S2");
+                            ui.selectable_value(&mut self.selected_season, "S3".to_string(), "S3");
+                        });
+                    egui::ComboBox::from_label("Select episode!")
+                        .selected_text(format!("{}", self.selected_episode))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.selected_episode, "ep1".to_string(), "ep1");
+                            ui.selectable_value(&mut self.selected_episode, "ep2".to_string(), "ep2");
+                            ui.selectable_value(&mut self.selected_episode, "ep3".to_string(), "ep3");
+                        });
                 }
             }
 
