@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::jobs::Job;
+use crate::jobs::Job2;
 use crate::production::{Movie, Production, Series, UserProduction};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
@@ -18,7 +18,7 @@ pub struct MovieApp {
 
     search_productions: Option<Rc<[Production]>>,
     search_cache: HashMap<String, Rc<[Production]>>,
-    fetch_productions_job: Job<(String, Vec<Production>)>,
+    fetch_productions_job: Job2<(String, Vec<Production>)>,
 
     // Right and center panel
     user_productions: Vec<UserProduction>,
@@ -38,7 +38,7 @@ impl MovieApp {
         ctx.set_visuals(visuals);
 
         // Implement dynamic scale changing?
-        ctx.set_pixels_per_point(1.5);
+        ctx.set_pixels_per_point(1.66);
 
         // YOINK! We are not going to these anymore.
         let key = std::mem::take(&mut config.api_key);
@@ -49,7 +49,7 @@ impl MovieApp {
             show_adult_content: config.include_adult,
             search_productions: None,
             search_cache: HashMap::default(),
-            fetch_productions_job: Job::Finished,
+            fetch_productions_job: Job2::Empty,
 
             user_productions: Vec::new(),
             selected_user_production: None,
@@ -451,7 +451,7 @@ impl MovieApp {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
 
-            if let Some((search, productions)) = self.fetch_productions_job.poll() {
+            if let Some((search, productions)) = self.fetch_productions_job.poll_owned() {
                 let productions: Rc<[Production]> = productions.into();
                 self.search_cache.insert(search.clone(), productions.clone());
                 self.search_productions = Some(productions);
@@ -479,8 +479,8 @@ struct ExpandedView {
     series: Option<Series>,
     movie: Option<Movie>,
 
-    series_details: Job<SeriesDetails>,
-    season_details: Job<SeasonDetails>,
+    series_details: Job2<SeriesDetails>,
+    season_details: Job2<SeasonDetails>,
 
     expanded_season: bool,
 }
@@ -495,8 +495,8 @@ impl ExpandedView {
             series: None,
             movie: None,
 
-            series_details: Job::Finished,
-            season_details: Job::Finished,
+            series_details: Job2::Empty,
+            season_details: Job2::Empty,
 
             expanded_season: false,
         }
@@ -519,7 +519,7 @@ impl ExpandedView {
         self.series = Some(series);
 
         self.series_details = movie_db.get_series_details(id);
-        self.season_details = Job::Finished;
+        self.season_details = Job2::Empty;
         self.series_window_open = true;
     }
 
