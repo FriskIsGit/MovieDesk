@@ -11,6 +11,7 @@ use std::rc::Rc;
 
 use egui::ImageSource::Uri;
 use egui::{include_image, Align, Label, Layout, Sense, TopBottomPanel, Ui, Vec2, Visuals};
+use crate::production;
 
 pub struct MovieApp {
     // Left panel
@@ -270,6 +271,9 @@ impl MovieApp {
             ui.heading(heading);
             ui.separator();
 
+            if ui.button("Serialize notes").clicked() {
+                production::serialize_user_productions(&self.user_series, &self.user_movies);
+            }
             // let mut user_productions = self.user_productions.borrow_mut();
             /*let Some(entry) = self.user_movies.get_mut(index) else {
                 ui.add_space(10.0);
@@ -383,6 +387,20 @@ impl MovieApp {
                     ui.label("/ 10")
                 });
                 ui.add_space(8.0);
+                if let Some(episode_num) = self.selected_episode {
+                    let season_num = self.selected_season.unwrap();
+                    let series_details = self.series_details.as_ref().unwrap();
+                    // we shouldn't ensure length every frame but at the same time we shouldn't
+                    // allocate all of it because series can be very big and we save space in json (read/write)
+                    user_series.ensure_seasons(series_details.number_of_seasons as usize);
+                    ui.label(format!("Episode {} notes:", episode_num));
+                    ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
+                        let mut season_notes = &mut user_series.season_notes[season_num as usize - 1];
+                        season_notes.ensure_episodes(series_details.number_of_episodes as usize);
+                        ui.text_edit_multiline(&mut season_notes.episode_notes[episode_num as usize-1]);
+                    });
+                    return;
+                }
                 ui.label("Your notes:");
                 ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                     ui.text_edit_multiline(&mut user_series.note);
@@ -509,7 +527,7 @@ impl MovieApp {
                                 series: series.clone(),
                                 note: String::new(),
                                 user_rating: 0.0,
-                                season_notes: SeasonNotes::new(),
+                                season_notes: Vec::new(),
                             };
                             self.user_series.push(new_data);
                         }

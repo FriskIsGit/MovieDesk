@@ -54,7 +54,18 @@ pub struct UserSeries {
     pub series: Series,
     pub user_rating: f32,
     pub note: String,
-    pub season_notes: SeasonNotes
+    pub season_notes: Vec<SeasonNotes>
+}
+impl UserSeries{
+    pub fn ensure_seasons(&mut self, len: usize) {
+        if self.season_notes.len() >= len {
+            return;
+        }
+        let fill = len - self.season_notes.len();
+        for _ in 0..fill {
+            self.season_notes.push(SeasonNotes::new());
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -69,10 +80,19 @@ impl SeasonNotes {
             episode_notes: Vec::new(),
         }
     }
+    pub fn ensure_episodes(&mut self, len: usize) {
+        if self.episode_notes.len() >= len {
+            return;
+        }
+        let fill = len - self.episode_notes.len();
+        for _ in 0..fill {
+            self.episode_notes.push("".into());
+        }
+    }
 }
 
 //pass Vec<UserMovie>
-pub fn serialize_user_productions(user_series: Vec<UserSeries>, user_movies: Vec<UserMovie>){
+pub fn serialize_user_productions(user_series: &Vec<UserSeries>, user_movies: &Vec<UserMovie>){
     let john = json!({
         "series": user_series,
         "movies": user_movies
@@ -110,4 +130,4 @@ user_prod.json
         {UserMovie}
     ]
 }
-**/
+*/
