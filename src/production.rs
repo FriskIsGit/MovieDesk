@@ -62,6 +62,14 @@ pub struct SeasonNotes{
     pub note: String,
     pub episode_notes: Vec<String>
 }
+impl SeasonNotes {
+    pub fn new() -> Self {
+        Self{
+            note: "".into(),
+            episode_notes: Vec::new(),
+        }
+    }
+}
 
 //pass Vec<UserMovie>
 pub fn serialize_user_productions(user_series: Vec<UserSeries>, user_movies: Vec<UserMovie>){

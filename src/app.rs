@@ -1,11 +1,12 @@
 use crate::config::Config;
 use crate::jobs::Job;
-use crate::production::{Movie, Production, Series, UserProduction};
+use crate::production::{Movie, Production, SeasonNotes, Series, UserMovie, UserProduction, UserSeries};
 use crate::series_details::{Episode, Season, SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 
 use std::cmp::min;
 use std::collections::HashMap;
+use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 use egui::ImageSource::Uri;
@@ -21,8 +22,10 @@ pub struct MovieApp {
     fetch_productions_job: Job<(String, Vec<Production>)>,
 
     // Right and center panel
-    user_productions: Vec<UserProduction>,
-    selected_user_production: Option<usize>,
+    user_movies: Vec<UserMovie>,
+    user_series: Vec<UserSeries>,
+    selected_user_movie: Option<usize>,
+    selected_user_series: Option<usize>,
 
     // Notes
     series_details_job: Job<SeriesDetails>,
@@ -59,8 +62,10 @@ impl MovieApp {
             search_cache: HashMap::default(),
             fetch_productions_job: Job::Empty,
 
-            user_productions: Vec::new(),
-            selected_user_production: None,
+            user_movies: Vec::new(),
+            user_series: Vec::new(),
+            selected_user_movie: None,
+            selected_user_series: None,
             series_details_job: Job::Empty,
             season_details_job: Job::Empty,
             series_details: None,
@@ -164,15 +169,57 @@ impl MovieApp {
 
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                 egui::Grid::new("grid_center").show(ui, |ui| {
-                    let entries = &self.user_productions;
-                    for (i, entry) in entries.iter().enumerate() {
-                        // NOTE: This is a placeholder. You should be able to click on an entire
-                        //       grid entry and then the whole thing should be highlighted.
-                        if let Some(index) = self.selected_user_production {
-                            let mut checked = index == i;
-                            if ui.checkbox(&mut checked, "").clicked() {
-                                self.selected_user_production = Some(i);
-                                if let Production::Series(series) = &entry.production {
+                    // NOTE: This is a placeholder. You should be able to click on an entire
+                    //       grid entry and then the whole thing should be highlighted.
+                    let movie_entries = &self.user_movies;
+                    for (i, entry) in movie_entries.iter().enumerate() {
+                        let movie = &entry.movie;
+                        match self.selected_user_movie {
+                            Some(index) => {
+                                let mut checked = index == i;
+                                if ui.checkbox(&mut checked, "").clicked() {
+                                    self.selected_user_movie = Some(i);
+                                    self.selected_user_series = None;
+                                }
+                            }
+                            None => {
+                                if ui.checkbox(&mut false, "").clicked() {
+                                    self.selected_user_movie = Some(i);
+                                    self.selected_user_series = None;
+                                }
+                            }
+                        }
+                        if movie.poster_path.is_some() {
+                            let image_url = TheMovieDB::get_full_poster_url(
+                                movie.poster_path.as_ref().unwrap(),
+                                Width::W300,
+                            );
+
+                            ui.image(Uri(image_url.into()));
+                            ui.heading(&movie.title);
+                        }
+                        ui.end_row();
+                    }
+
+                    let series_entries = &self.user_series;
+                    for (i, entry) in series_entries.iter().enumerate() {
+                        let series = &entry.series;
+
+                        match self.selected_user_series {
+                            Some(index) => {
+                                let mut checked = index == i;
+                                if ui.checkbox(&mut checked, "").clicked() {
+                                    self.selected_user_series = Some(i);
+                                    self.selected_user_movie = None;
+                                    self.series_details_job = self.movie_db.get_series_details(series.id);
+                                    self.selected_episode = None;
+                                    self.selected_season = None;
+                                }
+                            }
+                            None => {
+                                if ui.checkbox(&mut false, "").clicked() {
+                                    self.selected_user_series = Some(i);
+                                    self.selected_user_movie = None;
                                     // start two jobs: fetch seasons, fetch episodes for each series
                                     // now since caching is internal to app.rs then im gonna bother w that
                                     self.series_details_job = self.movie_db.get_series_details(series.id);
@@ -180,42 +227,16 @@ impl MovieApp {
                                     self.selected_season = None;
                                 }
                             }
-                        } else {
-                            let mut checked = false;
-                            if ui.checkbox(&mut checked, "").clicked() {
-                                self.selected_user_production = Some(i);
-                                // replica look 10^ up
-                                if let Production::Series(series) = &entry.production {
-                                    self.series_details_job = self.movie_db.get_series_details(series.id);
-                                    self.selected_episode = None;
-                                    self.selected_season = None;
-                                }
-                            }
                         }
 
-                        match &entry.production {
-                            Production::Movie(movie) => {
-                                if movie.poster_path.is_some() {
-                                    let image_url = TheMovieDB::get_full_poster_url(
-                                        movie.poster_path.as_ref().unwrap(),
-                                        Width::W300,
-                                    );
+                        if series.poster_path.is_some() {
+                            let image_url = TheMovieDB::get_full_poster_url(
+                                series.poster_path.as_ref().unwrap(),
+                                Width::W300,
+                            );
 
-                                    ui.image(Uri(image_url.into()));
-                                    ui.heading(&movie.title);
-                                }
-                            }
-                            Production::Series(series) => {
-                                if series.poster_path.is_some() {
-                                    let image_url = TheMovieDB::get_full_poster_url(
-                                        series.poster_path.as_ref().unwrap(),
-                                        Width::W300,
-                                    );
-
-                                    ui.image(Uri(image_url.into()));
-                                    ui.heading(&series.name);
-                                }
-                            }
+                            ui.image(Uri(image_url.into()));
+                            ui.heading(&series.name);
                         }
                         ui.end_row();
                     }
@@ -226,111 +247,147 @@ impl MovieApp {
 
     fn right_panel(&mut self, ctx: &egui::Context) {
         let right = egui::SidePanel::right("right_panel");
+        // This needs a lot of changes
         right.show(ctx, |ui| {
-            ui.heading("Selected production");
+            let mut heading;
+            if self.selected_user_movie.is_none() && self.selected_user_series.is_none() {
+                ui.add_space(10.0);
+                ui.label("Currently nothing is selected ._.");
+                return;
+            }
+            let mut is_movie;
+            match self.selected_user_movie {
+                Some(index) => {
+                    heading = "Selected movie";
+                    is_movie = true;
+                }
+                None => {
+                    // assuming we reset selected_user_movie
+                    heading = "Selected series";
+                    is_movie = false;
+                }
+            }
+            ui.heading(heading);
             ui.separator();
 
-            let Some(index) = self.selected_user_production else {
-                ui.add_space(10.0);
-                ui.label("Currently nothing is selected ._.");
-                return;
-            };
-
             // let mut user_productions = self.user_productions.borrow_mut();
-            let Some(entry) = self.user_productions.get_mut(index) else {
+            /*let Some(entry) = self.user_movies.get_mut(index) else {
                 ui.add_space(10.0);
                 ui.label("Currently nothing is selected ._.");
                 return;
-            };
+            };*/
+            if is_movie {
+                let Some(user_movie) = self.user_movies.get_mut(self.selected_user_movie.unwrap()) else {
+                    return;
+                };
+                let movie = &user_movie.movie;
+                ui.heading(&movie.title);
 
-            // Looks kinda wack, but we can change it later...
-            match &entry.production {
-                Production::Movie(movie) => {
-                    ui.heading(&movie.title);
-
-                    if let Some(poster) = &movie.poster_path {
-                        let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
-                        let image = egui::Image::new(Uri(image_url.into()));
-                        ui.add_sized([100.0, 100.0], image);
-                    }
+                if let Some(poster) = &movie.poster_path {
+                    let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
+                    let image = egui::Image::new(Uri(image_url.into()));
+                    ui.add_sized([100.0, 100.0], image);
                 }
-                Production::Series(series) => {
-                    ui.heading(&series.name);
+            } else{
+                let Some(user_series) = self.user_series.get_mut(self.selected_user_series.unwrap()) else {
+                    return;
+                };
+                let series = &user_series.series;
+                ui.heading(&series.name);
 
-                    if let Some(poster) = &series.poster_path {
-                        let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
-                        let image = egui::Image::new(Uri(image_url.into()));
-                        ui.add_sized([100.0, 100.0], image);
-                    }
+                if let Some(poster) = &series.poster_path {
+                    let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
+                    let image = egui::Image::new(Uri(image_url.into()));
+                    ui.add_sized([100.0, 100.0], image);
+                }
 
-                    if let Some(details) = self.series_details_job.poll_owned() {
-                        self.series_details = Some(details);
-                    }
-                    if let Some(details) = &self.series_details {
-                        let mut before_render_season;
-                        let display = if self.selected_season.is_some() {
-                            format!("S{}", self.selected_season.unwrap())
-                        } else {
-                            "None".to_string()
-                        };
-                        before_render_season = self.selected_season.unwrap_or(0);
-                        egui::ComboBox::from_label("Select season!")
-                            .selected_text(display)
-                            .show_ui(ui, |ui| {
-                                for i in 1..details.number_of_seasons {
-                                    ui.selectable_value(&mut self.selected_season, Some(i), format!("S{}", i));
-                                }
-                                ui.selectable_value(&mut self.selected_season, None, "None");
-                            });
-
-                        let after_render_season = self.selected_season.unwrap_or(0);
-                        if before_render_season != after_render_season {
-                            self.season_details_job = self.movie_db.get_season_details(series.id, after_render_season);
-                            self.selected_episode = None;
-                        }
-                        if self.selected_season.is_some() {
-                            if let Some(season_details) = self.season_details_job.poll_owned() {
-                                self.season_details = Some(season_details);
+                if let Some(details) = self.series_details_job.poll_owned() {
+                    self.series_details = Some(details);
+                }
+                if let Some(details) = &self.series_details {
+                    let mut before_render_season;
+                    let display = if self.selected_season.is_some() {
+                        format!("S{}", self.selected_season.unwrap())
+                    } else {
+                        "None".to_string()
+                    };
+                    before_render_season = self.selected_season.unwrap_or(0);
+                    egui::ComboBox::from_label("Select season!")
+                        .selected_text(display)
+                        .show_ui(ui, |ui| {
+                            for i in 1..=details.number_of_seasons {
+                                ui.selectable_value(&mut self.selected_season, Some(i), format!("S{}", i));
                             }
-                            if let Some(season_details) = &self.season_details {
-                                let display = if self.selected_episode.is_some() {
-                                    format!("EP{}", self.selected_episode.unwrap())
-                                } else {
-                                    "None".to_string()
-                                };
-                                let all_episodes = season_details.episodes.len();
-                                egui::ComboBox::from_label("Select episode!")
-                                    .selected_text(display)
-                                    .show_ui(ui, |ui| {
-                                        for i in 1..all_episodes {
-                                            ui.selectable_value(&mut self.selected_episode, Some(i as u32), format!("EP{}", i));
-                                        }
-                                        ui.selectable_value(&mut self.selected_episode, None, "None");
-                                    });
-                            }
+                            ui.selectable_value(&mut self.selected_season, None, "None");
+                        });
+
+                    let after_render_season = self.selected_season.unwrap_or(0);
+                    if before_render_season != after_render_season {
+                        self.season_details_job = self.movie_db.get_season_details(series.id, after_render_season);
+                        self.selected_episode = None;
+                    }
+                    if self.selected_season.is_some() {
+                        if let Some(season_details) = self.season_details_job.poll_owned() {
+                            self.season_details = Some(season_details);
+                        }
+                        if let Some(season_details) = &self.season_details {
+                            let display = if self.selected_episode.is_some() {
+                                format!("EP{}", self.selected_episode.unwrap())
+                            } else {
+                                "None".to_string()
+                            };
+                            let all_episodes = season_details.episodes.len();
+                            egui::ComboBox::from_label("Select episode!")
+                                .selected_text(display)
+                                .show_ui(ui, |ui| {
+                                    for i in 1..=all_episodes {
+                                        ui.selectable_value(&mut self.selected_episode, Some(i as u32), format!("EP{}", i));
+                                    }
+                                    ui.selectable_value(&mut self.selected_episode, None, "None");
+                                });
                         }
                     }
-
                 }
             }
 
             ui.separator();
             ui.add_space(8.0);
 
+            // lots of duplicates
             ui.label("Your rating:");
-            ui.horizontal(|ui| {
-                // Make this a custom button/slider thing where you click on stars to select rating?
-                // ⭐⭐⭐⭐⭐
-                ui.add(egui::DragValue::new(&mut entry.user_rating).speed(0.1));
-                ui.label("/ 10")
-            });
-
-            ui.add_space(8.0);
-
-            ui.label("Your notes:");
-            ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                ui.text_edit_multiline(&mut entry.note);
-            });
+            let mut user_movie;
+            let mut user_series;
+            if is_movie {
+                user_movie = self.user_movies.get_mut(self.selected_user_movie.unwrap()).unwrap();
+                ui.horizontal(|ui| {
+                    // Make this a custom button/slider thing where you click on stars to select rating?
+                    // ⭐⭐⭐⭐⭐
+                    ui.add(egui::DragValue::new(&mut user_movie.user_rating)
+                        .speed(0.1)
+                        .clamp_range(RangeInclusive::new(0.0, 10.0)));
+                    ui.label("/ 10")
+                });
+                ui.add_space(8.0);
+                ui.label("Your notes:");
+                ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
+                    ui.text_edit_multiline(&mut user_movie.note);
+                });
+            } else {
+                user_series = self.user_series.get_mut(self.selected_user_series.unwrap()).unwrap();
+                ui.horizontal(|ui| {
+                    // Make this a custom button/slider thing where you click on stars to select rating?
+                    // ⭐⭐⭐⭐⭐
+                    ui.add(egui::DragValue::new(&mut user_series.user_rating)
+                        .speed(0.1)
+                        .clamp_range(RangeInclusive::new(0.0, 10.0)));
+                    ui.label("/ 10")
+                });
+                ui.add_space(8.0);
+                ui.label("Your notes:");
+                ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
+                    ui.text_edit_multiline(&mut user_series.note);
+                });
+            }
         });
     }
 
@@ -356,20 +413,17 @@ impl MovieApp {
                 poster.context_menu(|ui| {
                     if ui.button("Add movie").clicked() {
                         // let mut user_productions = self.user_productions.borrow_mut();
-                        let exists = self.user_productions.iter().any(|entry| {
-                            let Production::Movie(user_movie) = &entry.production else {
-                                return false;
-                            };
-                            user_movie.id == movie.id
+                        let exists = self.user_movies.iter().any(|user_movie| {
+                            user_movie.movie.id == movie.id
                         });
 
                         if !exists {
-                            let new_data = UserProduction {
-                                production: Production::Movie(movie.clone()),
+                            let new_data = UserMovie {
+                                movie: movie.clone(),
                                 note: String::new(),
                                 user_rating: 0.0,
                             };
-                            self.user_productions.push(new_data);
+                            self.user_movies.push(new_data);
                         }
                         ui.close_menu()
                     }
@@ -446,20 +500,18 @@ impl MovieApp {
                 poster.context_menu(|ui| {
                     if ui.button("Add series").clicked() {
                         // let mut user_productions = self.user_productions.borrow_mut();
-                        let exists = self.user_productions.iter().any(|entry| {
-                            let Production::Series(user_series) = &entry.production else {
-                                return false;
-                            };
-                            user_series.id == series.id
+                        let exists = self.user_series.iter().any(|user_series| {
+                            user_series.series.id == series.id
                         });
 
                         if !exists {
-                            let new_data = UserProduction {
-                                production: Production::Series(series.clone()),
+                            let new_data = UserSeries {
+                                series: series.clone(),
                                 note: String::new(),
                                 user_rating: 0.0,
+                                season_notes: SeasonNotes::new(),
                             };
-                            self.user_productions.push(new_data);
+                            self.user_series.push(new_data);
                         }
                         ui.close_menu()
                     }
