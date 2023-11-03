@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::jobs::Job;
 use crate::production::{Movie, Production, Series, UserProduction};
-use crate::series_details::{SeasonDetails, SeriesDetails};
+use crate::series_details::{Episode, Season, SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 
 use std::cmp::min;
@@ -23,8 +23,14 @@ pub struct MovieApp {
     // Right and center panel
     user_productions: Vec<UserProduction>,
     selected_user_production: Option<usize>,
-    selected_season: String,
-    selected_episode: String,
+
+    // Notes
+    series_details_job: Job<SeriesDetails>,
+    season_details_job: Job<SeasonDetails>,
+    series_details: Option<SeriesDetails>,
+    season_details: Option<SeasonDetails>,
+    selected_season: Option<u32>,
+    selected_episode: Option<u32>,
 
     // Expanded view state
     expanded_view: ExpandedView,
@@ -55,8 +61,12 @@ impl MovieApp {
 
             user_productions: Vec::new(),
             selected_user_production: None,
-            selected_season: "S1".into(),
-            selected_episode: "ep1".into(),
+            series_details_job: Job::Empty,
+            season_details_job: Job::Empty,
+            series_details: None,
+            season_details: None,
+            selected_season: None,
+            selected_episode: None,
 
             expanded_view: ExpandedView::new(),
 
@@ -162,11 +172,24 @@ impl MovieApp {
                             let mut checked = index == i;
                             if ui.checkbox(&mut checked, "").clicked() {
                                 self.selected_user_production = Some(i);
+                                if let Production::Series(series) = &entry.production {
+                                    // start two jobs: fetch seasons, fetch episodes for each series
+                                    // now since caching is internal to app.rs then im gonna bother w that
+                                    self.series_details_job = self.movie_db.get_series_details(series.id);
+                                    self.selected_episode = None;
+                                    self.selected_season = None;
+                                }
                             }
                         } else {
                             let mut checked = false;
                             if ui.checkbox(&mut checked, "").clicked() {
                                 self.selected_user_production = Some(i);
+                                // replica look 10^ up
+                                if let Production::Series(series) = &entry.production {
+                                    self.series_details_job = self.movie_db.get_series_details(series.id);
+                                    self.selected_episode = None;
+                                    self.selected_season = None;
+                                }
                             }
                         }
 
@@ -240,20 +263,54 @@ impl MovieApp {
                         ui.add_sized([100.0, 100.0], image);
                     }
 
-                    egui::ComboBox::from_label("Select season!")
-                        .selected_text(format!("{}", self.selected_season))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.selected_season, "S1".to_string(), "S1");
-                            ui.selectable_value(&mut self.selected_season, "S2".to_string(), "S2");
-                            ui.selectable_value(&mut self.selected_season, "S3".to_string(), "S3");
-                        });
-                    egui::ComboBox::from_label("Select episode!")
-                        .selected_text(format!("{}", self.selected_episode))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.selected_episode, "ep1".to_string(), "ep1");
-                            ui.selectable_value(&mut self.selected_episode, "ep2".to_string(), "ep2");
-                            ui.selectable_value(&mut self.selected_episode, "ep3".to_string(), "ep3");
-                        });
+                    if let Some(details) = self.series_details_job.poll_owned() {
+                        self.series_details = Some(details);
+                    }
+                    if let Some(details) = &self.series_details {
+                        let mut before_render_season;
+                        let display = if self.selected_season.is_some() {
+                            format!("S{}", self.selected_season.unwrap())
+                        } else {
+                            "None".to_string()
+                        };
+                        before_render_season = self.selected_season.unwrap_or(0);
+                        egui::ComboBox::from_label("Select season!")
+                            .selected_text(display)
+                            .show_ui(ui, |ui| {
+                                for i in 1..details.number_of_seasons {
+                                    ui.selectable_value(&mut self.selected_season, Some(i), format!("S{}", i));
+                                }
+                                ui.selectable_value(&mut self.selected_season, None, "None");
+                            });
+
+                        let after_render_season = self.selected_season.unwrap_or(0);
+                        if before_render_season != after_render_season {
+                            self.season_details_job = self.movie_db.get_season_details(series.id, after_render_season);
+                            self.selected_episode = None;
+                        }
+                        if self.selected_season.is_some() {
+                            if let Some(season_details) = self.season_details_job.poll_owned() {
+                                self.season_details = Some(season_details);
+                            }
+                            if let Some(season_details) = &self.season_details {
+                                let display = if self.selected_episode.is_some() {
+                                    format!("EP{}", self.selected_episode.unwrap())
+                                } else {
+                                    "None".to_string()
+                                };
+                                let all_episodes = season_details.episodes.len();
+                                egui::ComboBox::from_label("Select episode!")
+                                    .selected_text(display)
+                                    .show_ui(ui, |ui| {
+                                        for i in 1..all_episodes {
+                                            ui.selectable_value(&mut self.selected_episode, Some(i as u32), format!("EP{}", i));
+                                        }
+                                        ui.selectable_value(&mut self.selected_episode, None, "None");
+                                    });
+                            }
+                        }
+                    }
+
                 }
             }
 
