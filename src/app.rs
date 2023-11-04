@@ -166,6 +166,11 @@ impl MovieApp {
         let center = egui::CentralPanel::default();
         center.show(ctx, |ui| {
             ui.heading("Your movies!");
+            if ui.button("Deserialize prods").clicked() {
+                let user_prods = production::deserialize_user_productions();
+                self.user_series = user_prods.0;
+                self.user_movies = user_prods.1;
+            }
             ui.separator();
 
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
@@ -398,6 +403,17 @@ impl MovieApp {
                         let mut season_notes = &mut user_series.season_notes[season_num as usize - 1];
                         season_notes.ensure_episodes(series_details.number_of_episodes as usize);
                         ui.text_edit_multiline(&mut season_notes.episode_notes[episode_num as usize-1]);
+                    });
+                    return;
+                }
+                if let Some(season_num) = self.selected_season {
+                    let series_details = self.series_details.as_ref().unwrap();
+                    // we shouldn't ensure length every frame but at the same time we shouldn't
+                    // allocate all of it because series can be very big and we save space in json (read/write)
+                    user_series.ensure_seasons(series_details.number_of_seasons as usize);
+                    ui.label(format!("Season {} notes:", season_num));
+                    ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
+                        ui.text_edit_multiline(&mut user_series.season_notes[season_num as usize - 1].note);
                     });
                     return;
                 }

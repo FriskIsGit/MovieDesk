@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Write};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -98,10 +98,15 @@ pub fn serialize_user_productions(user_series: &Vec<UserSeries>, user_movies: &V
         "movies": user_movies
     });
     let serialized_json = serde_json::to_string(&john).expect("Failed to serialize JSON");
-
-    let _path = "../user_prod.json";
-    // Write to a file, or write to a temp file then move files.
+    let temp_path = "../user_prod_temp.json";
     println!("{}", serialized_json);
+    let result = File::create(temp_path.clone()).expect("Unable to create file").write(serialized_json.as_bytes());
+    if result.is_err() {
+        eprintln!("Unable to write")
+    }
+    // Write to a file, or write to a temp file then move files.
+    let path = "../user_prod.json";
+    std::fs::rename(temp_path, path).expect("Unable to move/rename");
 }
 
 pub fn deserialize_user_productions() -> (Vec<UserSeries>, Vec<UserMovie>){
