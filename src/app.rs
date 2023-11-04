@@ -50,9 +50,10 @@ impl MovieApp {
         ctx.set_visuals(visuals);
 
         // Implement dynamic scale changing?
-        ctx.set_pixels_per_point(1.66);
+        ctx.set_pixels_per_point(1.5);
 
-        // YOINK! We are not going to these anymore.
+        // YOINK! We are not going to need the this here anymore.
+        // The api key is only used by TheMovieDB.
         let key = std::mem::take(&mut config.api_key);
 
         let movie_db = TheMovieDB::new(key, config.enable_cache);
@@ -507,8 +508,8 @@ impl MovieApp {
 
         if movie.overview.len() > 200 {
             // NOTE: This is really bad! We should cache the output of the format to not call
-            // it every single frame. We should also not take the slice here because we can
-            // panic since strings are UTF-8 and this take bytes.
+            //       it every single frame. We should also not take the slice here because we can
+            //       panic since strings are UTF-8 and this takes bytes.
             //                                 vvvvvvvvvvvvvvvvvvvvvv
             let description = format!("{}...", &movie.overview[..200].trim());
             ui.label(description);
@@ -595,8 +596,8 @@ impl MovieApp {
 
         if series.overview.len() > 200 {
             // NOTE: This is really bad! We should cache the output of the format to not call
-            // it every single frame. We should also not take the slice here because we can
-            // panic since strings are UTF-8 and this take bytes.
+            //       it every single frame. We should also not take the slice here because we can
+            //       panic since strings are UTF-8 and this takes bytes.
             //                                 vvvvvvvvvvvvvvvvvvvvvv
             let description = format!("{}...", &series.overview[..200]);
             ui.label(description);
