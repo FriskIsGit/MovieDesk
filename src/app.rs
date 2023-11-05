@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::jobs::Job;
-use crate::production::{Movie, Production, SeasonNotes, Series, UserMovie, UserProduction, UserSeries};
-use crate::series_details::{Episode, Season, SeasonDetails, SeriesDetails};
+use crate::production::{Movie, Production, Series, UserMovie, UserSeries};
+use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 
 use std::cmp::min;
@@ -9,9 +9,9 @@ use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
+use crate::production;
 use egui::ImageSource::Uri;
 use egui::{include_image, Align, Label, Layout, Sense, TopBottomPanel, Ui, Vec2, Visuals};
-use crate::production;
 
 pub struct MovieApp {
     // Left panel
@@ -113,7 +113,7 @@ impl MovieApp {
 
     pub fn render(&mut self, ctx: &egui::Context) {
         self.expanded_view.expanded_series_window(ctx, &self.movie_db);
-        //self.expanded_view.expanded_movie_window(ctx, self.movie_db);
+        self.expanded_view.expanded_movie_window(ctx);
 
         self.top_panel(ctx);
         self.left_panel(ctx);
@@ -167,11 +167,6 @@ impl MovieApp {
         let center = egui::CentralPanel::default();
         center.show(ctx, |ui| {
             ui.heading("Your movies!");
-            if ui.button("Deserialize prods").clicked() {
-                let user_prods = production::deserialize_user_productions();
-                self.user_series = user_prods.0;
-                self.user_movies = user_prods.1;
-            }
             ui.separator();
 
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
@@ -197,10 +192,8 @@ impl MovieApp {
                             }
                         }
                         if movie.poster_path.is_some() {
-                            let image_url = TheMovieDB::get_full_poster_url(
-                                movie.poster_path.as_ref().unwrap(),
-                                Width::W300,
-                            );
+                            let image_url =
+                                TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
 
                             ui.image(Uri(image_url.into()));
                             ui.heading(&movie.title);
@@ -237,10 +230,8 @@ impl MovieApp {
                         }
 
                         if series.poster_path.is_some() {
-                            let image_url = TheMovieDB::get_full_poster_url(
-                                series.poster_path.as_ref().unwrap(),
-                                Width::W300,
-                            );
+                            let image_url =
+                                TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
 
                             ui.image(Uri(image_url.into()));
                             ui.heading(&series.name);
@@ -256,15 +247,16 @@ impl MovieApp {
         let right = egui::SidePanel::right("right_panel");
         // This needs a lot of changes
         right.show(ctx, |ui| {
-            let mut heading;
+            let heading;
             if self.selected_user_movie.is_none() && self.selected_user_series.is_none() {
                 ui.add_space(10.0);
                 ui.label("Currently nothing is selected ._.");
                 return;
             }
-            let mut is_movie;
+
+            let is_movie;
             match self.selected_user_movie {
-                Some(index) => {
+                Some(_) => {
                     heading = "Selected movie";
                     is_movie = true;
                 }
@@ -277,9 +269,6 @@ impl MovieApp {
             ui.heading(heading);
             ui.separator();
 
-            if ui.button("Serialize notes").clicked() {
-                production::serialize_user_productions(&self.user_series, &self.user_movies);
-            }
             // let mut user_productions = self.user_productions.borrow_mut();
             /*let Some(entry) = self.user_movies.get_mut(index) else {
                 ui.add_space(10.0);
@@ -298,7 +287,7 @@ impl MovieApp {
                     let image = egui::Image::new(Uri(image_url.into()));
                     ui.add_sized([100.0, 100.0], image);
                 }
-            } else{
+            } else {
                 let Some(user_series) = self.user_series.get_mut(self.selected_user_series.unwrap()) else {
                     return;
                 };
@@ -315,7 +304,7 @@ impl MovieApp {
                     self.series_details = Some(details);
                 }
                 if let Some(details) = &self.series_details {
-                    let mut before_render_season;
+                    let before_render_season;
                     let display = if self.selected_season.is_some() {
                         format!("S{}", self.selected_season.unwrap())
                     } else {
@@ -351,7 +340,11 @@ impl MovieApp {
                                 .selected_text(display)
                                 .show_ui(ui, |ui| {
                                     for i in 1..=all_episodes {
-                                        ui.selectable_value(&mut self.selected_episode, Some(i as u32), format!("EP{}", i));
+                                        ui.selectable_value(
+                                            &mut self.selected_episode,
+                                            Some(i as u32),
+                                            format!("EP{}", i),
+                                        );
                                     }
                                     ui.selectable_value(&mut self.selected_episode, None, "None");
                                 });
@@ -365,16 +358,18 @@ impl MovieApp {
 
             // lots of duplicates
             ui.label("Your rating:");
-            let mut user_movie;
-            let mut user_series;
+            let user_movie;
+            let user_series;
             if is_movie {
                 user_movie = self.user_movies.get_mut(self.selected_user_movie.unwrap()).unwrap();
                 ui.horizontal(|ui| {
                     // Make this a custom button/slider thing where you click on stars to select rating?
                     // ⭐⭐⭐⭐⭐
-                    ui.add(egui::DragValue::new(&mut user_movie.user_rating)
-                        .speed(0.1)
-                        .clamp_range(RangeInclusive::new(0.0, 10.0)));
+                    ui.add(
+                        egui::DragValue::new(&mut user_movie.user_rating)
+                            .speed(0.1)
+                            .clamp_range(RangeInclusive::new(0.0, 10.0)),
+                    );
                     ui.label("/ 10")
                 });
                 ui.add_space(8.0);
@@ -387,9 +382,11 @@ impl MovieApp {
                 ui.horizontal(|ui| {
                     // Make this a custom button/slider thing where you click on stars to select rating?
                     // ⭐⭐⭐⭐⭐
-                    ui.add(egui::DragValue::new(&mut user_series.user_rating)
-                        .speed(0.1)
-                        .clamp_range(RangeInclusive::new(0.0, 10.0)));
+                    ui.add(
+                        egui::DragValue::new(&mut user_series.user_rating)
+                            .speed(0.1)
+                            .clamp_range(RangeInclusive::new(0.0, 10.0)),
+                    );
                     ui.label("/ 10")
                 });
                 ui.add_space(8.0);
@@ -401,9 +398,9 @@ impl MovieApp {
                     user_series.ensure_seasons(series_details.number_of_seasons as usize);
                     ui.label(format!("Episode {} notes:", episode_num));
                     ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                        let mut season_notes = &mut user_series.season_notes[season_num as usize - 1];
+                        let season_notes = &mut user_series.season_notes[season_num as usize - 1];
                         season_notes.ensure_episodes(series_details.number_of_episodes as usize);
-                        ui.text_edit_multiline(&mut season_notes.episode_notes[episode_num as usize-1]);
+                        ui.text_edit_multiline(&mut season_notes.episode_notes[episode_num as usize - 1]);
                     });
                     return;
                 }
@@ -429,9 +426,43 @@ impl MovieApp {
     // Could be used for some toolbar logic at the top of the layout.
     // | File | View | Settings | Help | Info | ... etc.
     // Just like many popular programs.
-    fn top_panel(&self, ctx: &egui::Context) {
+    fn top_panel(&mut self, ctx: &egui::Context) {
         let top = TopBottomPanel::top("top_panel");
-        top.resizable(true).show(ctx, |_| {});
+        top.resizable(true).show(ctx, |ui| {
+            egui::menu::bar(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("Save data").clicked() {
+                        production::serialize_user_productions(&self.user_series, &self.user_movies);
+                    }
+                    if ui.button("Load data").clicked() {
+                        let user_prods = production::deserialize_user_productions();
+                        self.user_series = user_prods.0;
+                        self.user_movies = user_prods.1;
+                    }
+                });
+
+                ui.menu_button("View", |_| {});
+
+                ui.menu_button("Settings", |ui| {
+                    /* The settings menu:
+                        - [ ] Auto-save
+                            - [ ] Enable/Disable
+                            - [ ] Update interval
+                        - [ ] Enable/Disable local caching
+                        - [ ] Set tmdb token
+                        - [ ] Set default browser
+                    */
+
+                    if ui.button("Auto-save").clicked() {}
+                    if ui.button("Enable caching").clicked() {}
+                    if ui.button("Set TMDB token").clicked() {}
+                    if ui.button("Set default browser").clicked() {}
+                });
+
+                ui.menu_button("About", |_| {});
+                ui.menu_button("License", |_| {});
+            });
+        });
     }
 
     fn draw_movie_entry(&mut self, ui: &mut Ui, movie: &Movie) {
@@ -448,9 +479,10 @@ impl MovieApp {
                 poster.context_menu(|ui| {
                     if ui.button("Add movie").clicked() {
                         // let mut user_productions = self.user_productions.borrow_mut();
-                        let exists = self.user_movies.iter().any(|user_movie| {
-                            user_movie.movie.id == movie.id
-                        });
+                        let exists = self
+                            .user_movies
+                            .iter()
+                            .any(|user_movie| user_movie.movie.id == movie.id);
 
                         if !exists {
                             let new_data = UserMovie {
@@ -535,9 +567,10 @@ impl MovieApp {
                 poster.context_menu(|ui| {
                     if ui.button("Add series").clicked() {
                         // let mut user_productions = self.user_productions.borrow_mut();
-                        let exists = self.user_series.iter().any(|user_series| {
-                            user_series.series.id == series.id
-                        });
+                        let exists = self
+                            .user_series
+                            .iter()
+                            .any(|user_series| user_series.series.id == series.id);
 
                         if !exists {
                             let new_data = UserSeries {
@@ -638,7 +671,7 @@ struct ExpandedView {
     series_window_open: bool,
     movie_window_open: bool,
     series_window_title: String,
-    movie_window_title: String,
+    _movie_window_title: String,
     series: Option<Series>,
     movie: Option<Movie>,
 
@@ -654,7 +687,7 @@ impl ExpandedView {
             series_window_open: false,
             movie_window_open: false,
             series_window_title: "".into(),
-            movie_window_title: "".into(),
+            _movie_window_title: "".into(),
             series: None,
             movie: None,
 
@@ -772,6 +805,10 @@ impl ExpandedView {
     }
 
     fn expanded_movie_window(&mut self, ctx: &egui::Context) {
+        let Some(_) = self.movie.as_ref() else {
+            return;
+        };
+
         println!("Expanded");
         let movie = &self.movie.as_ref().unwrap();
 

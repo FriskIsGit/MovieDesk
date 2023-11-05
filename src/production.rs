@@ -36,11 +36,11 @@ pub enum Production {
 }
 
 //convert UserProduction to UserMovie
-pub struct UserProduction {
-    pub production: Production,
-    pub user_rating: f32,
-    pub note: String,
-}
+// pub struct UserProduction {
+//     pub production: Production,
+//     pub user_rating: f32,
+//     pub note: String,
+// }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserMovie {
@@ -92,7 +92,7 @@ impl SeasonNotes {
 }
 
 //pass Vec<UserMovie>
-pub fn serialize_user_productions(user_series: &Vec<UserSeries>, user_movies: &Vec<UserMovie>){
+pub fn serialize_user_productions(user_series: &[UserSeries], user_movies: &[UserMovie]){
     let john = json!({
         "series": user_series,
         "movies": user_movies
@@ -100,7 +100,7 @@ pub fn serialize_user_productions(user_series: &Vec<UserSeries>, user_movies: &V
     let serialized_json = serde_json::to_string(&john).expect("Failed to serialize JSON");
     let temp_path = "../user_prod_temp.json";
     println!("{}", serialized_json);
-    let result = File::create(temp_path.clone()).expect("Unable to create file").write(serialized_json.as_bytes());
+    let result = File::create(temp_path).expect("Unable to create file").write(serialized_json.as_bytes());
     if result.is_err() {
         eprintln!("Unable to write")
     }

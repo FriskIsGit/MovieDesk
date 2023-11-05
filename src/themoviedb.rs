@@ -1,10 +1,9 @@
 use crate::jobs::Job;
 use crate::production::Production;
 use crate::series_details::{SeasonDetails, SeriesDetails};
+use egui::TextBuffer;
 use serde_json::Value;
 use std::time::Duration;
-use egui::TextBuffer;
-use ureq;
 use ureq::{Agent, AgentBuilder};
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
@@ -39,8 +38,7 @@ impl TheMovieDB {
     }
 
     fn new_authorized_get(&self, url: &str) -> ureq::Request {
-        self
-            .agent
+        self.agent
             .get(url)
             .set("Accept", "application/json")
             .set("Authorization", &format!("Bearer {}", self.api_key))

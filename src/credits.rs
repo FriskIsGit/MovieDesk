@@ -8,6 +8,7 @@ pub struct Credits {
     //don't deserialize crew
 }
 
+#[allow(dead_code)]
 impl Credits {
     pub fn parse(json: &str) -> Credits {
         serde_json::from_str(json).expect("Failed to deserialize a Credits object")
@@ -24,6 +25,7 @@ pub struct Actor {
     adult: bool,
 }
 
+#[allow(dead_code)]
 impl Actor {
     pub fn get_gender(&self) -> &str {
         match self.gender {
