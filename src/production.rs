@@ -35,13 +35,6 @@ pub enum Production {
     Series(Series),
 }
 
-//convert UserProduction to UserMovie
-// pub struct UserProduction {
-//     pub production: Production,
-//     pub user_rating: f32,
-//     pub note: String,
-// }
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserMovie {
     pub movie: Movie,
@@ -91,35 +84,51 @@ impl SeasonNotes {
     }
 }
 
-//pass Vec<UserMovie>
-pub fn serialize_user_productions(user_series: &[UserSeries], user_movies: &[UserMovie]){
+pub fn serialize_user_productions(user_series: &[UserSeries], user_movies: &[UserMovie]) -> Result<(), String>{
     let john = json!({
         "series": user_series,
         "movies": user_movies
     });
     let serialized_json = serde_json::to_string(&john).expect("Failed to serialize JSON");
-    let temp_path = "../user_prod_temp.json";
-    println!("{}", serialized_json);
-    let result = File::create(temp_path).expect("Unable to create file").write(serialized_json.as_bytes());
-    if result.is_err() {
-        eprintln!("Unable to write")
-    }
+    let temp_path = "res/user_prod_temp.json";
+    let mut file = match File::create(temp_path) {
+        Ok(file_handle) => file_handle,
+        Err(err) => return Err(err.to_string())
+    };
+    match file.write(serialized_json.as_bytes()) {
+        Err(err) => return Err(err.to_string()),
+        _ => {}
+    };
     // Write to a file, or write to a temp file then move files.
-    let path = "../user_prod.json";
-    std::fs::rename(temp_path, path).expect("Unable to move/rename");
+    let path = "res/user_prod.json";
+    return match std::fs::rename(temp_path, path) {
+        Err(err) => Err(err.to_string()),
+        Ok(_) => Ok(())
+    };
 }
 
-pub fn deserialize_user_productions() -> (Vec<UserSeries>, Vec<UserMovie>){
-    let path = "../user_prod.json";
-    let file = File::open(path).unwrap();
+pub fn deserialize_user_productions(path: Option<String>) -> Result<(Vec<UserSeries>, Vec<UserMovie>), String> {
+    let path = match path {
+        Some(s) => s,
+        None => "res/user_prod.json".into(),
+    };
+    let file = match File::open(path) {
+        Ok(file_handle) => file_handle,
+        Err(err) => return Err(err.to_string())
+    };
     let reader = BufReader::new(file);
     let mut json: Value = serde_json::from_reader(reader).expect("Failed on read from memory");
-    let user_series = json["series"].take();
-    let user_movies = json["movies"].take();
-    (
-        serde_json::from_value(user_series).expect("Failed to deserialize UserSeries"),
-        serde_json::from_value(user_movies).expect("Failed to deserialize UserMovies")
-    )
+    let series_arr = json["series"].take();
+    let movies_arr = json["movies"].take();
+    let user_series = match serde_json::from_value(series_arr) {
+        Ok(vec_value) => vec_value,
+        Err(err) => return Err(err.to_string())
+    };
+    let user_movies = match serde_json::from_value(movies_arr) {
+        Ok(vec_value) => vec_value,
+        Err(err) => return Err(err.to_string())
+    };
+    Ok((user_series, user_movies))
 }
 
 /*

@@ -431,23 +431,44 @@ impl MovieApp {
         top.resizable(true).show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    if ui.button("Save data").clicked() {
-                        production::serialize_user_productions(&self.user_series, &self.user_movies);
+                    // display success/failure message somewhere once finished below?
+                    if ui.button("Save data").clicked() && (!self.user_movies.is_empty() || !self.user_movies.is_empty()) {
+                        let outcome = production::serialize_user_productions(&self.user_series, &self.user_movies);
+                        if outcome.is_err() {
+                            eprintln!("{}", outcome.unwrap_err())
+                        }
                     }
                     if ui.button("Load data").clicked() {
-                        let user_prods = production::deserialize_user_productions();
-                        self.user_series = user_prods.0;
-                        self.user_movies = user_prods.1;
+                        let outcome = production::deserialize_user_productions(None);
+                        match outcome {
+                            Ok(user_prods) => {
+                                self.user_series = user_prods.0;
+                                self.user_movies = user_prods.1;
+                            }
+                            Err(msg) => eprintln!("{}", msg)
+                        }
                     }
+                    if ui.button("Load data from file").clicked() {}
                 });
 
-                ui.menu_button("View", |_| {});
+                ui.menu_button("View", |ui| {
+                    // why is this so laggy?
+                    if ui.button("PPP +0.01").clicked() {
+                        ctx.set_pixels_per_point(ctx.pixels_per_point() + 0.01);
+                    }
+                    if ui.button("PPP -0.01").clicked() {
+                        ctx.set_pixels_per_point(ctx.pixels_per_point() - 0.01);
+                    }
+                });
 
                 ui.menu_button("Settings", |ui| {
                     /* The settings menu:
                         - [ ] Auto-save
                             - [ ] Enable/Disable
                             - [ ] Update interval
+                        - [ ] Sync
+                            - [ ] Sync to server
+                            - [ ] Sync from server
                         - [ ] Enable/Disable local caching
                         - [ ] Set tmdb token
                         - [ ] Set default browser
@@ -457,6 +478,8 @@ impl MovieApp {
                     if ui.button("Enable caching").clicked() {}
                     if ui.button("Set TMDB token").clicked() {}
                     if ui.button("Set default browser").clicked() {}
+                    if ui.button("Set default browser").clicked() {}
+                    if ui.button("Sync").clicked() {}
                 });
 
                 ui.menu_button("About", |_| {});

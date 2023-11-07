@@ -3,3 +3,4 @@ Cargo.lock
 /target
 *.iml
 res/config.json
+res/user_prod.json

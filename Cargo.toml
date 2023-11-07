@@ -24,11 +24,11 @@ serde = { version = "1.0", features = ["derive"] }
 # Http requests
 ureq = "2.8.0"
 
-# Opens file dialog
+# Opens URL in browser
 open = "5.0.0"
 
 [features]
-default = [ "sdl_backend" ]
+default = [ "eframe_backend" ]
 sdl_backend = [ "dep:sdl2", "dep:gl" ]
 glfw_backend = [ "dep:glfw", "dep:gl" ]
 eframe_backend = [ "dep:eframe" ]
