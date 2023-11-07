@@ -478,7 +478,6 @@ impl MovieApp {
                     if ui.button("Enable caching").clicked() {}
                     if ui.button("Set TMDB token").clicked() {}
                     if ui.button("Set default browser").clicked() {}
-                    if ui.button("Set default browser").clicked() {}
                     if ui.button("Sync").clicked() {}
                 });
 
