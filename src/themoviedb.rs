@@ -1,5 +1,5 @@
 use crate::jobs::Job;
-use crate::production::Production;
+use crate::production::{Production, ProductionIds};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use egui::TextBuffer;
 use serde_json::Value;
@@ -7,8 +7,11 @@ use std::time::Duration;
 use ureq::{Agent, AgentBuilder};
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
-const SERIES_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
+const SERIES_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/";   //{series_id}
+const MOVIE_DETAILS_URL: &str = "https://api.themoviedb.org/3/movie/"; //{movie_id}
 const IMAGE_URL: &str = "https://image.tmdb.org/t/p/";
+const IMDB_TITLE: &str = "https://www.imdb.com/title/";
+const IMDB_FIND: &str = "https://www.imdb.com/find/?q=";
 
 #[allow(dead_code)]
 pub enum Width {
@@ -123,6 +126,31 @@ impl TheMovieDB {
 
             serde_json::from_reader(response.into_reader()).unwrap()
         })
+    }
+    pub fn get_imdb_url(&self, production: Production) -> String {
+        let prod_name;
+        let url = match production {
+            Production::Movie(movie) => {
+                prod_name = movie.title.to_owned();
+                format!("{MOVIE_DETAILS_URL}/{}/external_ids", movie.id)
+            }
+            Production::Series(series) => {
+                prod_name = series.name.to_owned();
+                format!("{SERIES_DETAILS_URL}/{}/external_ids", series.id)
+            }
+        };
+        let request = self.new_authorized_get(&url);
+        let Ok(response) = request.call() else {
+            eprintln!("Error on sending request");
+            return format!("{IMDB_FIND}{prod_name}");
+        };
+        let mut json: Value = serde_json::from_reader(response.into_reader()).unwrap();
+        println!("{}", json);
+        let ids: ProductionIds = serde_json::from_value(json.take()).unwrap();
+        match ids.imdb_id {
+            Some(imdb_id) => format!("{IMDB_TITLE}{imdb_id}"),
+            None => format!("{IMDB_FIND}{prod_name}")
+        }
     }
 
     pub fn download_poster(&self, poster_url: &str, file_path: &str) {

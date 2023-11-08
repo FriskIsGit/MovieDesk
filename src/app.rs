@@ -522,18 +522,18 @@ impl MovieApp {
                         ui.close_menu();
                     }
 
-                    if ui.button("Open in tmdb").clicked() {
+                    if ui.button("Open in TMDB").clicked() {
                         let mut path = String::from(MOVIE_URL);
                         path.push_str(movie.id.to_string().as_str());
                         let browser = &self.config.browser_name;
                         let _ = open::with_in_background(path, browser);
                     }
 
-                    if ui.button("Open in imdb").clicked() {
-                        let path = format!("https://www.imdb.com/find/?q={}", movie.title);
+                    if ui.button("Open in IMDB").clicked() {
+                        let url = self.movie_db.get_imdb_url(Production::Movie(movie.to_owned()));
                         let browser = &self.config.browser_name;
                         //use External IDs (movie endpoint)
-                        let _ = open::with_in_background(path, browser);
+                        let _ = open::with_in_background(url, browser);
                     }
 
                     if ui.button("Download poster").clicked() && movie.poster_path.is_some() {
@@ -611,18 +611,18 @@ impl MovieApp {
                         ui.close_menu();
                     }
 
-                    if ui.button("Open in tmdb").clicked() {
+                    if ui.button("Open in TMDB").clicked() {
                         let mut path = String::from(TV_URL);
                         path.push_str(series.id.to_string().as_str());
                         let browser = &self.config.browser_name;
                         let _ = open::with_in_background(path, browser);
                     }
 
-                    if ui.button("Open in imdb").clicked() {
-                        let path = format!("https://www.imdb.com/find/?q={}", series.name);
+                    if ui.button("Open in IMDB").clicked() {
+                        let url = self.movie_db.get_imdb_url(Production::Series(series.to_owned()));
                         let browser = &self.config.browser_name;
-                        //its buggy open in tmdb instead?
-                        let _ = open::with_in_background(path, browser);
+                        //use External IDs (movie endpoint)
+                        let _ = open::with_in_background(url, browser);
                     }
 
                     if ui.button("Download poster").clicked() && series.poster_path.is_some() {

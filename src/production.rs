@@ -3,7 +3,7 @@ use std::io::{BufReader, Write};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Series {
     pub id: u32,
     pub name: String,
@@ -16,7 +16,7 @@ pub struct Series {
     pub adult: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Movie {
     pub id: u32,
     pub title: String,
@@ -33,6 +33,20 @@ pub struct Movie {
 pub enum Production {
     Movie(Movie),
     Series(Series),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProductionIds {
+    pub id: u32,
+    pub facebook_id: Option<String>,
+    pub freebase_id: Option<String>,
+    pub freebase_mid: Option<String>,
+    pub imdb_id: Option<String>,
+    pub instagram_id: Option<String>,
+    pub tvdb_id: Option<u32>,
+    pub tvrage_id: Option<u32>,
+    pub twitter_id: Option<String>,
+    pub wikidata_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
