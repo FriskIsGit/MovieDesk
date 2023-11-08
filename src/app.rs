@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::jobs::Job;
-use crate::production::{Movie, Production, Series, UserMovie, UserSeries};
+use crate::production::{Movie, Production, Series, Trailer, UserMovie, UserSeries};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 
@@ -36,8 +36,9 @@ pub struct MovieApp {
     selected_season: Option<u32>,
     selected_episode: Option<u32>,
 
-    // Expanded view state
+    // View states
     expanded_view: ExpandedView,
+    trailers_view: TrailersView,
 
     // Not a part of the layout
     movie_db: TheMovieDB,
@@ -76,6 +77,7 @@ impl MovieApp {
             selected_episode: None,
 
             expanded_view: ExpandedView::new(),
+            trailers_view: TrailersView::new(),
 
             movie_db,
             config,
@@ -114,6 +116,7 @@ impl MovieApp {
     pub fn render(&mut self, ctx: &egui::Context) {
         self.expanded_view.expanded_series_window(ctx, &self.movie_db);
         self.expanded_view.expanded_movie_window(ctx);
+        self.trailers_view.draw(ctx);
 
         self.top_panel(ctx);
         self.left_panel(ctx);
@@ -532,8 +535,12 @@ impl MovieApp {
                     if ui.button("Open in IMDB").clicked() {
                         let url = self.movie_db.get_imdb_url(Production::Movie(movie.to_owned()));
                         let browser = &self.config.browser_name;
-                        //use External IDs (movie endpoint)
                         let _ = open::with_in_background(url, browser);
+                    }
+
+                    if ui.button("Fetch trailers").clicked() {
+                        let trailers = self.movie_db.get_movie_trailers(movie.id);
+                        self.trailers_view.set_content(movie.title.to_owned(), trailers);
                     }
 
                     if ui.button("Download poster").clicked() && movie.poster_path.is_some() {
@@ -621,8 +628,12 @@ impl MovieApp {
                     if ui.button("Open in IMDB").clicked() {
                         let url = self.movie_db.get_imdb_url(Production::Series(series.to_owned()));
                         let browser = &self.config.browser_name;
-                        //use External IDs (movie endpoint)
                         let _ = open::with_in_background(url, browser);
+                    }
+
+                    if ui.button("Fetch trailers").clicked() {
+                        let trailers = self.movie_db.get_series_trailers(series.id);
+                        self.trailers_view.set_content(series.name.to_owned(), trailers);
                     }
 
                     if ui.button("Download poster").clicked() && series.poster_path.is_some() {
@@ -839,5 +850,46 @@ impl ExpandedView {
             .resizable(true);
 
         window.show(ctx, |ui| ui.label("Hello movie!"));
+    }
+}
+
+struct TrailersView {
+    is_open: bool,
+    title: String,
+    trailers: Vec<Trailer>,
+}
+
+impl TrailersView {
+    pub fn new() -> Self {
+        Self {
+            is_open: false,
+            title: "".into(),
+            trailers: Vec::new(),
+        }
+    }
+
+    pub fn set_content(&mut self, title: String, trailers: Vec<Trailer>) {
+        self.is_open = true;
+        self.title = title;
+        self.trailers = trailers;
+    }
+
+    pub fn draw(&mut self, ctx: &egui::Context){
+        if !self.is_open || self.trailers.is_empty() {
+            return;
+        }
+        let window = egui::Window::new(&self.title)
+            .open(&mut self.is_open)
+            .resizable(true);
+
+        window.show(ctx, |ui| {
+            ui.vertical(|ui| {
+                for trailer in &self.trailers {
+                    ui.label(&trailer.name);
+                    ui.hyperlink(trailer.youtube_url());
+                    ui.separator();
+                }
+            });
+        });
     }
 }

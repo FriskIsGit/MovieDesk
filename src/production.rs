@@ -1,3 +1,4 @@
+use std::fmt::format;
 use std::fs::File;
 use std::io::{BufReader, Write};
 use serde::{Deserialize, Serialize};
@@ -47,6 +48,21 @@ pub struct ProductionIds {
     pub tvrage_id: Option<u32>,
     pub twitter_id: Option<String>,
     pub wikidata_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Trailer {
+    pub name: String,
+    pub key: String,
+    pub published_at: String,
+    pub site: String,
+    pub size: u32,
+    pub official: bool,
+}
+impl Trailer {
+    pub fn youtube_url(&self) -> String {
+        format!("https://youtube.com/watch?v={}", self.key)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

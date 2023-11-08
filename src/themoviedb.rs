@@ -1,5 +1,5 @@
 use crate::jobs::Job;
-use crate::production::{Production, ProductionIds};
+use crate::production::{Production, ProductionIds, Trailer};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use egui::TextBuffer;
 use serde_json::Value;
@@ -127,6 +127,7 @@ impl TheMovieDB {
             serde_json::from_reader(response.into_reader()).unwrap()
         })
     }
+
     pub fn get_imdb_url(&self, production: Production) -> String {
         let prod_name;
         let url = match production {
@@ -151,6 +152,31 @@ impl TheMovieDB {
             Some(imdb_id) => format!("{IMDB_TITLE}{imdb_id}"),
             None => format!("{IMDB_FIND}{prod_name}")
         }
+    }
+
+    pub fn get_movie_trailers(&self, movie_id: u32) -> Vec<Trailer> {
+        self.get_trailers(format!("https://api.themoviedb.org/3/movie/{movie_id}/videos"))
+    }
+    pub fn get_series_trailers(&self, series_id: u32) -> Vec<Trailer> {
+        self.get_trailers(format!("https://api.themoviedb.org/3/tv/{series_id}/videos"))
+    }
+    fn get_trailers(&self, url: String) -> Vec<Trailer> {
+        let request = self.new_authorized_get(&url);
+        let Ok(response) = request.call() else {
+            eprintln!("Error on sending request");
+            return Vec::new();
+        };
+        let mut json: Value = serde_json::from_reader(response.into_reader()).unwrap();
+        let mut results_arr = json["results"].take();
+        let videos = results_arr.as_array_mut().unwrap();
+        let mut trailers: Vec<Trailer> = Vec::new();
+        for vid in videos {
+            if vid["type"] == "Trailer" {
+                let trailer = serde_json::from_value(vid.take()).unwrap();
+                trailers.push(trailer);
+            }
+        }
+        return trailers;
     }
 
     pub fn download_poster(&self, poster_url: &str, file_path: &str) {
