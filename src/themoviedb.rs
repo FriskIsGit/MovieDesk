@@ -7,7 +7,7 @@ use std::time::Duration;
 use ureq::{Agent, AgentBuilder};
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
-const SERIES_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/";   //{series_id}
+const SERIES_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
 const MOVIE_DETAILS_URL: &str = "https://api.themoviedb.org/3/movie/"; //{movie_id}
 const IMAGE_URL: &str = "https://image.tmdb.org/t/p/";
 const IMDB_TITLE: &str = "https://www.imdb.com/title/";
@@ -150,16 +150,18 @@ impl TheMovieDB {
         let ids: ProductionIds = serde_json::from_value(json.take()).unwrap();
         match ids.imdb_id {
             Some(imdb_id) => format!("{IMDB_TITLE}{imdb_id}"),
-            None => format!("{IMDB_FIND}{prod_name}")
+            None => format!("{IMDB_FIND}{prod_name}"),
         }
     }
 
     pub fn get_movie_trailers(&self, movie_id: u32) -> Vec<Trailer> {
         self.get_trailers(format!("https://api.themoviedb.org/3/movie/{movie_id}/videos"))
     }
+
     pub fn get_series_trailers(&self, series_id: u32) -> Vec<Trailer> {
         self.get_trailers(format!("https://api.themoviedb.org/3/tv/{series_id}/videos"))
     }
+
     fn get_trailers(&self, url: String) -> Vec<Trailer> {
         let request = self.new_authorized_get(&url);
         let Ok(response) = request.call() else {
@@ -176,7 +178,7 @@ impl TheMovieDB {
                 trailers.push(trailer);
             }
         }
-        return trailers;
+        trailers
     }
 
     pub fn download_poster(&self, poster_url: &str, file_path: &str) {

@@ -1,4 +1,3 @@
-use std::fmt::format;
 use std::fs::File;
 use std::io::{BufReader, Write};
 use serde::{Deserialize, Serialize};
@@ -125,16 +124,17 @@ pub fn serialize_user_productions(user_series: &[UserSeries], user_movies: &[Use
         Ok(file_handle) => file_handle,
         Err(err) => return Err(err.to_string())
     };
-    match file.write(serialized_json.as_bytes()) {
-        Err(err) => return Err(err.to_string()),
-        _ => {}
-    };
+
+    if let Err(err) = file.write(serialized_json.as_bytes()) { 
+        return Err(err.to_string()) 
+    }
+
     // Write to a file, or write to a temp file then move files.
     let path = "res/user_prod.json";
-    return match std::fs::rename(temp_path, path) {
+    match std::fs::rename(temp_path, path) {
         Err(err) => Err(err.to_string()),
         Ok(_) => Ok(())
-    };
+    }
 }
 
 pub fn deserialize_user_productions(path: Option<String>) -> Result<(Vec<UserSeries>, Vec<UserMovie>), String> {

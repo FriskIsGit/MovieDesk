@@ -1,4 +1,5 @@
 mod app;
+mod view;
 mod backend;
 mod config;
 mod credits;
