@@ -3,7 +3,7 @@ use crate::jobs::Job;
 use crate::production::{Movie, Production, Series, UserMovie, UserSeries};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
-use crate::view::{ExpandedView, TrailersView};
+use crate::view::{SeriesView, MovieView, TrailersView};
 
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
@@ -37,7 +37,8 @@ pub struct MovieApp {
     selected_episode: Option<u32>,
 
     // View states
-    expanded_view: ExpandedView,
+    series_view: SeriesView,
+    movie_view: MovieView,
     trailers_view: TrailersView,
 
     // Not a part of the layout
@@ -76,7 +77,8 @@ impl MovieApp {
             selected_season: None,
             selected_episode: None,
 
-            expanded_view: ExpandedView::new(),
+            series_view: SeriesView::new(),
+            movie_view: MovieView::new(),
             trailers_view: TrailersView::new(),
 
             movie_db,
@@ -114,8 +116,8 @@ impl MovieApp {
     }
 
     pub fn render(&mut self, ctx: &egui::Context) {
-        self.expanded_view.expanded_series_window(ctx, &self.movie_db);
-        self.expanded_view.expanded_movie_window(ctx);
+        self.series_view.draw(ctx, &self.movie_db);
+        self.movie_view.draw(ctx, &self.movie_db);
         self.trailers_view.draw(ctx);
 
         self.top_panel(ctx);
@@ -520,7 +522,7 @@ impl MovieApp {
                     }
                     //change name?: xpanded view, about, more, view seasons, view more, view details,
                     if ui.button("More details").clicked() {
-                        self.expanded_view.set_movie(movie.clone());
+                        self.movie_view.set_movie(movie.clone(), &self.movie_db);
                         ui.close_menu();
                     }
 
@@ -613,7 +615,7 @@ impl MovieApp {
                     }
 
                     if ui.button("More series details").clicked() {
-                        self.expanded_view.set_series(series.clone(), &self.movie_db);
+                        self.series_view.set_series(series.clone(), &self.movie_db);
                         ui.close_menu();
                     }
 
