@@ -55,8 +55,6 @@ impl SeriesView {
             return;
         };
 
-        // self.series_window_open = true;
-
         let seasons_per_row = std::cmp::min(5, series_details.seasons.len());
 
         let window = egui::Window::new(&self.window_title)
@@ -166,7 +164,7 @@ impl MovieView {
             ui.label(format!("{}", movie.overview));
             ui.separator();
             ui.horizontal_wrapped(|ui| {
-                if let Some(poster) = movie.poster_path.as_ref() {
+                if let Some(ref poster) = movie.poster_path {
                     let image_url = TheMovieDB::get_full_poster_url(poster, Width::W400);
                     let width = 250.0;
                     ui.add_sized([width, width * 1.5], egui::Image::new(image_url));

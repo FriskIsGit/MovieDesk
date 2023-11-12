@@ -10,7 +10,6 @@ use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 use crate::production;
-use egui::ImageSource::Uri;
 use egui::{Align, Layout, TopBottomPanel, Ui, Vec2, Visuals};
 
 pub struct MovieApp {
@@ -200,7 +199,7 @@ impl MovieApp {
                             let image_url =
                                 TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
 
-                            ui.image(Uri(image_url.into()));
+                            ui.image(image_url);
                             ui.heading(&movie.title);
                         }
                         ui.end_row();
@@ -238,7 +237,7 @@ impl MovieApp {
                             let image_url =
                                 TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
 
-                            ui.image(Uri(image_url.into()));
+                            ui.image(image_url);
                             ui.heading(&series.name);
                         }
                         ui.end_row();
@@ -289,7 +288,7 @@ impl MovieApp {
 
                 if let Some(poster) = &movie.poster_path {
                     let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
-                    let image = egui::Image::new(Uri(image_url.into()));
+                    let image = egui::Image::new(image_url);
                     ui.add_sized([100.0, 100.0], image);
                 }
             } else {
@@ -301,7 +300,7 @@ impl MovieApp {
 
                 if let Some(poster) = &series.poster_path {
                     let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
-                    let image = egui::Image::new(Uri(image_url.into()));
+                    let image = egui::Image::new(image_url);
                     ui.add_sized([100.0, 100.0], image);
                 }
 
@@ -497,10 +496,10 @@ impl MovieApp {
         }
 
         ui.horizontal(|ui| {
-            if let Some(poster) = movie.poster_path.as_ref() {
+            if let Some(ref poster) = movie.poster_path {
                 let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
 
-                let image = egui::Image::new(Uri(image_url.into()));
+                let image = egui::Image::new(image_url);
                 let poster = ui.add_sized([60.0, 100.0], image).interact(egui::Sense::click());
                 poster.context_menu(|ui| {
                     if ui.button("Add movie").clicked() {
@@ -591,7 +590,7 @@ impl MovieApp {
             if let Some(poster) = &series.poster_path {
                 let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
 
-                let image = egui::Image::new(Uri(image_url.into()));
+                let image = egui::Image::new(image_url);
                 let poster = ui.add_sized([60.0, 100.0], image).interact(egui::Sense::click());
 
                 poster.context_menu(|ui| {
