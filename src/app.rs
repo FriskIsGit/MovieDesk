@@ -8,9 +8,12 @@ use crate::view::{SeriesView, MovieView, TrailersView};
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
+use std::time::Duration;
 
 use crate::production;
 use egui::{Align, Layout, TopBottomPanel, Ui, Vec2, Visuals};
+use egui::ahash::HashSet;
+use crate::limiter::RateLimiter;
 
 pub struct MovieApp {
     // Left panel
@@ -19,6 +22,7 @@ pub struct MovieApp {
 
     search_productions: Option<Rc<[Production]>>,
     search_cache: HashMap<String, Rc<[Production]>>,
+    rendered_ids: HashSet<u32>,
     fetch_productions_job: Job<(String, Vec<Production>)>,
 
     // Right and center panel
@@ -40,6 +44,8 @@ pub struct MovieApp {
     movie_view: MovieView,
     trailers_view: TrailersView,
 
+    // Rate limiter
+    image_limiter: RateLimiter,
     // Not a part of the layout
     movie_db: TheMovieDB,
     config: Config,
@@ -63,6 +69,7 @@ impl MovieApp {
             show_adult_content: config.include_adult,
             search_productions: None,
             search_cache: HashMap::default(),
+            rendered_ids: HashSet::default(),
             fetch_productions_job: Job::Empty,
 
             user_movies: Vec::new(),
@@ -80,6 +87,7 @@ impl MovieApp {
             movie_view: MovieView::new(),
             trailers_view: TrailersView::new(),
 
+            image_limiter: RateLimiter::new(20, Duration::from_secs(1)),
             movie_db,
             config,
         }
@@ -199,7 +207,15 @@ impl MovieApp {
                             let image_url =
                                 TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
 
-                            ui.image(image_url);
+                            if self.rendered_ids.contains(&movie.id) {
+                                ui.image(image_url);
+                            } else if self.image_limiter.hit() {
+                                self.rendered_ids.insert(movie.id);
+                                ui.image(image_url);
+                            } else {
+                                ui.spinner();
+                            }
+
                             ui.heading(&movie.title);
                         }
                         ui.end_row();
@@ -237,7 +253,14 @@ impl MovieApp {
                             let image_url =
                                 TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
 
-                            ui.image(image_url);
+                            if self.rendered_ids.contains(&series.id) {
+                                ui.image(image_url);
+                            } else if self.image_limiter.hit() {
+                                self.rendered_ids.insert(series.id);
+                                ui.image(image_url);
+                            } else {
+                                ui.spinner();
+                            }
                             ui.heading(&series.name);
                         }
                         ui.end_row();

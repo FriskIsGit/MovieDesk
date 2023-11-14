@@ -48,7 +48,7 @@ impl TheMovieDB {
     }
 
     pub fn search_production(&mut self, query: String) -> Job<(String, Vec<Production>)> {
-        let url = format!("{SEARCH_MULTI_URL}?query={}&include_adult={}", query, true);
+        let url = format!("{SEARCH_MULTI_URL}?query={query}&include_adult={}", true);
         let request = self.new_authorized_get(&url);
 
         Job::new(move || {
