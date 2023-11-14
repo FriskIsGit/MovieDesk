@@ -203,6 +203,7 @@ impl MovieApp {
                                 }
                             }
                         }
+
                         if movie.poster_path.is_some() {
                             let image_url =
                                 TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);

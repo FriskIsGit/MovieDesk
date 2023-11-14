@@ -1,6 +1,11 @@
-use crate::{production::{Movie, Series, Trailer}, jobs::Job, series_details::{SeriesDetails, SeasonDetails}, themoviedb::{TheMovieDB, Width}};
+use crate::{
+    jobs::Job,
+    production::{Movie, Series, Trailer},
+    series_details::{SeasonDetails, SeriesDetails},
+    themoviedb::{TheMovieDB, Width},
+};
 
-use egui::{ImageSource::Uri, Sense, include_image, Label};
+use egui::{include_image, ImageSource::Uri, Label, Sense};
 
 pub struct SeriesView {
     window_open: bool,
@@ -16,7 +21,6 @@ pub struct MovieView {
     window_open: bool,
     window_title: String,
     movie: Option<Movie>,
-
     //movie_details: Job<MovieDetails>,
 }
 
@@ -48,7 +52,6 @@ impl SeriesView {
         self.window_open = true;
     }
 
-    //this is called every frame
     pub fn draw(&mut self, ctx: &egui::Context, movie_db: &TheMovieDB) {
         let Some(series) = self.series.as_ref() else { return };
         let Some(series_details) = self.series_details.poll() else {
@@ -96,8 +99,9 @@ impl SeriesView {
             ui.separator();
 
             if series_details.seasons.len() <= 5 {
-                // don't wrap in ScrollArea just leave bare grid
+                // TODO: don't wrap in ScrollArea just leave bare grid
             }
+
             egui::ScrollArea::new([true; 2]).show(ui, |ui| {
                 egui::Grid::new("seasons_grid").max_col_width(100.0).show(ui, |ui| {
                     for (i, season) in series_details.seasons.iter().enumerate() {
@@ -137,12 +141,13 @@ impl SeriesView {
 
 impl MovieView {
     pub fn new() -> Self {
-        Self{
+        Self {
             window_open: false,
             window_title: "".to_string(),
-            movie: None
+            movie: None,
         }
     }
+
     pub fn set_movie(&mut self, movie: Movie, _movie_db: &TheMovieDB) {
         let _id = movie.id;
         self.window_title = movie.title.clone();
@@ -161,7 +166,7 @@ impl MovieView {
             .resizable(true);
 
         window.show(ctx, |ui| {
-            ui.label(format!("{}", movie.overview));
+            ui.label(&movie.overview);
             ui.separator();
             ui.horizontal_wrapped(|ui| {
                 if let Some(ref poster) = movie.poster_path {
@@ -197,10 +202,12 @@ impl TrailersView {
         if !self.is_open || self.trailers.is_empty() {
             return;
         }
+
         let window = egui::Window::new(&self.title)
             .open(&mut self.is_open)
             .id("trailers".into())
             .resizable(true);
+
         window.show(ctx, |ui| {
             ui.vertical(|ui| {
                 for trailer in &self.trailers {
