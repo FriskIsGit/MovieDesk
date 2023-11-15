@@ -50,6 +50,7 @@ impl SeriesView {
         self.series_details = movie_db.get_series_details(id);
         self.season_details = Job::Empty;
         self.window_open = true;
+        self.expanded_season = false;
     }
 
     pub fn draw(&mut self, ctx: &egui::Context, movie_db: &TheMovieDB) {
