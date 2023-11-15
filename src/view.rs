@@ -5,7 +5,7 @@ use crate::{
     themoviedb::{TheMovieDB, Width},
 };
 
-use egui::{include_image, ImageSource::Uri, Label, Sense};
+use egui::{include_image, ImageSource::Uri, Label, Sense, Id};
 
 pub struct SeriesView {
     window_open: bool,
@@ -62,6 +62,7 @@ impl SeriesView {
         let seasons_per_row = std::cmp::min(5, series_details.seasons.len());
 
         let window = egui::Window::new(&self.window_title)
+            .id(Id::new(series.id))
             .open(&mut self.window_open)
             .default_width((seasons_per_row * 100 + seasons_per_row * 5) as f32)
             .default_height(300.0)
