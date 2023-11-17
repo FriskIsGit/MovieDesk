@@ -8,6 +8,7 @@ mod production;
 mod series_details;
 mod themoviedb;
 mod limiter;
+mod movie_details;
 
 // TODO: Add a title filtering field 'Your movies' - visible only if there are at least 3 productions
 //       add options like sorting alphabetically or by rating

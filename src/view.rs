@@ -6,6 +6,7 @@ use crate::{
 };
 
 use egui::{include_image, ImageSource::Uri, Label, Sense, Id};
+use crate::movie_details::MovieDetails;
 
 pub struct SeriesView {
     window_open: bool,
@@ -21,7 +22,7 @@ pub struct MovieView {
     window_open: bool,
     window_title: String,
     movie: Option<Movie>,
-    //movie_details: Job<MovieDetails>,
+    movie_details: Job<MovieDetails>,
 }
 
 pub struct TrailersView {
@@ -147,19 +148,23 @@ impl MovieView {
             window_open: false,
             window_title: "".to_string(),
             movie: None,
+            movie_details: Job::Empty,
         }
     }
 
-    pub fn set_movie(&mut self, movie: Movie, _movie_db: &TheMovieDB) {
-        let _id = movie.id;
+    pub fn set_movie(&mut self, movie: Movie, movie_db: &TheMovieDB) {
+        let id = movie.id;
         self.window_title = movie.title.clone();
         self.movie = Some(movie);
-        //self.movie_details = movie_db.get_movie_details(_id);
+        self.movie_details = movie_db.get_movie_details(id);
         self.window_open = true;
     }
 
     pub fn draw(&mut self, ctx: &egui::Context, _movie_db: &TheMovieDB) {
         let Some(ref movie) = self.movie else {
+            return;
+        };
+        let Some(movie_details) = self.movie_details.poll() else {
             return;
         };
 
@@ -179,6 +184,19 @@ impl MovieView {
                 ui.vertical_centered(|ui| {
                     ui.label(format!("Language: {}", movie.original_language.to_uppercase()));
                     ui.label(format!("Released: {}", movie.release_date));
+                    ui.label(format!("Runtime: {}min", movie_details.runtime));
+                    let budget = if movie_details.budget == 0 { "Unknown".into() } else { movie_details.budget() };
+                    ui.label(format!("Budget: {budget}"));
+                    let revenue = if movie_details.revenue == 0 { "Unknown".into() } else { movie_details.revenue() };
+                    ui.label(format!("Revenue: {revenue}"));
+                    let genres = movie_details.genres.join(",");
+                    ui.label(format!("Genres: {}", genres.trim_end_matches(",")));
+                    let mut companies = String::with_capacity(movie_details.production_companies.len() * 10);
+                    for company in &movie_details.production_companies {
+                        companies.push_str(&company.name);
+                        companies.push_str(", ")
+                    }
+                    ui.label(format!("Production companies: {companies}"));
                 });
             });
         });

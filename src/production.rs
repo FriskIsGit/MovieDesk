@@ -26,6 +26,7 @@ pub struct Movie {
     pub poster_path: Option<String>,
     pub release_date: String,
     pub vote_average: f32,
+    pub vote_count: u32,
     pub adult: bool,
 }
 

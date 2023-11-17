@@ -5,6 +5,7 @@ use egui::TextBuffer;
 use serde_json::Value;
 use std::time::Duration;
 use ureq::{Agent, AgentBuilder};
+use crate::movie_details::MovieDetails;
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
 const SERIES_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
@@ -125,6 +126,30 @@ impl TheMovieDB {
             };
 
             serde_json::from_reader(response.into_reader()).unwrap()
+        })
+    }
+
+    pub fn get_movie_details(&self, movie_id: u32) -> Job<MovieDetails> {
+        let url = format!("{MOVIE_DETAILS_URL}{movie_id}");
+        let request = self.new_authorized_get(&url);
+
+        Job::new(move || {
+            println!("Executing request..");
+            let Ok(response) = request.call() else {
+                panic!("Error on sending request");
+            };
+
+            let json_response = response.into_string().unwrap();
+            let mut payload: Value = serde_json::from_str(json_response.as_str()).unwrap();
+            let mut taken_genres = payload["genres"].take();
+            let genres_arr = taken_genres.as_array_mut().unwrap();
+            let mut details: MovieDetails = serde_json::from_value(payload).unwrap();
+            let mut genres: Vec<String> = Vec::with_capacity(genres_arr.len());
+            for genre_obj in genres_arr {
+                genres.push(genre_obj["name"].take().to_string());
+            }
+            details.genres = genres;
+            details
         })
     }
 
