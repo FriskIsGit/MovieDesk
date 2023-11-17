@@ -274,14 +274,18 @@ impl MovieApp {
     fn right_panel(&mut self, ctx: &egui::Context) {
         let right = egui::SidePanel::right("right_panel");
         // This needs a lot of changes
-        right.show(ctx, |ui| {
-            let heading;
+        right.resizable(true).show(ctx, |ui| {
             if self.selected_user_movie.is_none() && self.selected_user_series.is_none() {
-                ui.add_space(10.0);
-                ui.label("Currently nothing is selected ._.");
+                ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
+                    ui.heading("Nothing selected");
+                    ui.separator();
+                    ui.add_space(10.0);
+                    ui.label("Currently nothing is selected ._.");
+                });
                 return;
             }
 
+            let heading;
             let is_movie;
             match self.selected_user_movie {
                 Some(_) => {
@@ -459,7 +463,7 @@ impl MovieApp {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     // display success/failure message somewhere once finished below?
-                    if ui.button("Save data").clicked() && (!self.user_movies.is_empty() || !self.user_movies.is_empty()) {
+                    if ui.button("Save data").clicked() {
                         let outcome = production::serialize_user_productions(&self.user_series, &self.user_movies);
                         if outcome.is_err() {
                             eprintln!("{}", outcome.unwrap_err())
