@@ -34,7 +34,8 @@ impl RateLimiter {
         if self.hits.len() > self.max_hits {
             return false;
         }
+
         self.hits.push(now);
-        return true;
+        true
     }
 }

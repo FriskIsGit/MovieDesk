@@ -190,7 +190,7 @@ impl MovieView {
                     let revenue = if movie_details.revenue == 0 { "Unknown".into() } else { movie_details.revenue() };
                     ui.label(format!("Revenue: {revenue}"));
                     let genres = movie_details.genres.join(",");
-                    ui.label(format!("Genres: {}", genres.trim_end_matches(",")));
+                    ui.label(format!("Genres: {}", genres.trim_end_matches(',')));
                     let mut companies = String::with_capacity(movie_details.production_companies.len() * 10);
                     for company in &movie_details.production_companies {
                         companies.push_str(&company.name);

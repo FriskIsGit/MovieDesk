@@ -181,92 +181,189 @@ impl MovieApp {
             ui.heading("Your movies!");
             ui.separator();
 
+            // NOTE: This is an outline of a new list view. Kind of messy and still needs some work.
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                egui::Grid::new("grid_center").show(ui, |ui| {
-                    // NOTE: This is a placeholder. You should be able to click on an entire
-                    //       grid entry and then the whole thing should be highlighted.
-                    let movie_entries = &self.user_movies;
-                    for (i, entry) in movie_entries.iter().enumerate() {
-                        let movie = &entry.movie;
-                        match self.selected_user_movie {
-                            Some(index) => {
-                                let mut checked = index == i;
-                                if ui.checkbox(&mut checked, "").clicked() {
-                                    self.selected_user_movie = Some(i);
-                                    self.selected_user_series = None;
-                                }
-                            }
-                            None => {
-                                if ui.checkbox(&mut false, "").clicked() {
-                                    self.selected_user_movie = Some(i);
-                                    self.selected_user_series = None;
-                                }
-                            }
+                for (i, entry) in self.user_movies.iter().enumerate() {
+                    let desired_size = egui::vec2(ui.available_width(), 32.0);
+                    let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+
+                    if response.clicked() {
+                        self.selected_user_movie = Some(i);
+                        self.selected_user_series = None;
+                    }
+
+                    let movie = &entry.movie;
+                    let selected = match self.selected_user_movie {
+                        Some(index) => index == i, 
+                        None => false,
+                    };
+
+                    // Attach some meta-data to the response which can be used by screen readers:
+                    // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
+
+                    if ui.is_rect_visible(rect) {
+                        let visuals = ui.style().interact(&response);
+                        let visuals2 = ui.style().noninteractive();
+
+                        // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
+                        let rect = rect.expand(visuals.expansion);
+
+                        if selected {
+                            ui.painter().rect(rect, 1.0, visuals.bg_fill, visuals.bg_stroke);
+                        } else {
+                            ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
                         }
+
+                        let pos = rect.min + egui::Vec2::new(32.0, rect.height() / 2.0);
+                        let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
+                        ui.painter().text(pos, egui::Align2::LEFT_CENTER, &movie.title, font_id, egui::Color32::GRAY);
 
                         if movie.poster_path.is_some() {
-                            let image_url =
-                                TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
+                            let image_pos = rect.min + egui::vec2(3.0, 3.0);
+                            let desired_size = egui::vec2(20.0, 28.0);
 
-                            if self.rendered_ids.contains(&movie.id) {
-                                ui.image(image_url);
-                            } else if self.image_limiter.hit() {
-                                self.rendered_ids.insert(movie.id);
-                                ui.image(image_url);
-                            } else {
-                                ui.spinner();
-                            }
-
-                            ui.heading(&movie.title);
+                            let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
+                            let image_url = TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
+                            egui::Image::new(image_url).paint_at(ui, image_rect);
                         }
-                        ui.end_row();
+                    }
+                }
+
+                for (i, entry) in self.user_series.iter().enumerate() {
+                    let series = &entry.series;
+
+                    let desired_size = egui::vec2(ui.available_width(), 32.0);
+                    let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+
+                    if response.clicked() {
+                        self.selected_user_series = Some(i);
+                        self.selected_user_movie = None;
+                        self.series_details_job = self.movie_db.get_series_details(series.id);
+                        self.selected_episode = None;
+                        self.selected_season = None;
                     }
 
-                    let series_entries = &self.user_series;
-                    for (i, entry) in series_entries.iter().enumerate() {
-                        let series = &entry.series;
+                    let selected = match self.selected_user_series {
+                        Some(index) => index == i,
+                        None => false,
+                    };
 
-                        match self.selected_user_series {
-                            Some(index) => {
-                                let mut checked = index == i;
-                                if ui.checkbox(&mut checked, "").clicked() {
-                                    self.selected_user_series = Some(i);
-                                    self.selected_user_movie = None;
-                                    self.series_details_job = self.movie_db.get_series_details(series.id);
-                                    self.selected_episode = None;
-                                    self.selected_season = None;
-                                }
-                            }
-                            None => {
-                                if ui.checkbox(&mut false, "").clicked() {
-                                    self.selected_user_series = Some(i);
-                                    self.selected_user_movie = None;
-                                    // start two jobs: fetch seasons, fetch episodes for each series
-                                    // now since caching is internal to app.rs then im gonna bother w that
-                                    self.series_details_job = self.movie_db.get_series_details(series.id);
-                                    self.selected_episode = None;
-                                    self.selected_season = None;
-                                }
-                            }
+                    // Attach some meta-data to the response which can be used by screen readers:
+                    // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
+
+                    if ui.is_rect_visible(rect) {
+                        let visuals = ui.style().interact(&response);
+                        let visuals2 = ui.style().noninteractive();
+
+                        // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
+                        let rect = rect.expand(visuals.expansion);
+
+                        if selected {
+                            ui.painter().rect(rect, 1.0, visuals.bg_fill, visuals.bg_stroke);
+                        } else {
+                            ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
                         }
+
+                        let pos = rect.min + egui::Vec2::new(32.0, rect.height() / 2.0);
+                        let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
+                        ui.painter().text(pos, egui::Align2::LEFT_CENTER, &series.name, font_id, egui::Color32::GRAY);
 
                         if series.poster_path.is_some() {
-                            let image_url =
-                                TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
+                            let image_pos = rect.min + egui::vec2(3.0, 3.0);
+                            let desired_size = egui::vec2(20.0, 28.0);
 
-                            if self.rendered_ids.contains(&series.id) {
-                                ui.image(image_url);
-                            } else if self.image_limiter.hit() {
-                                self.rendered_ids.insert(series.id);
-                                ui.image(image_url);
-                            } else {
-                                ui.spinner();
-                            }
-                            ui.heading(&series.name);
+                            let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
+                            let image_url = TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
+                            egui::Image::new(image_url).paint_at(ui, image_rect);
                         }
-                        ui.end_row();
                     }
-                });
+                }
+
+                // egui::Grid::new("grid_center").show(ui, |ui| {
+                //     // NOTE: This is a placeholder. You should be able to click on an entire
+                //     //       grid entry and then the whole thing should be highlighted.
+                //     let movie_entries = &self.user_movies;
+                //     for (i, entry) in movie_entries.iter().enumerate() {
+                //         let movie = &entry.movie;
+                //         match self.selected_user_movie {
+                //             Some(index) => {
+                //                 let mut checked = index == i;
+                //                 if ui.checkbox(&mut checked, "").clicked() {
+                //                     self.selected_user_movie = Some(i);
+                //                     self.selected_user_series = None;
+                //                 }
+                //             }
+                //             None => {
+                //                 if ui.checkbox(&mut false, "").clicked() {
+                //                     self.selected_user_movie = Some(i);
+                //                     self.selected_user_series = None;
+                //                 }
+                //             }
+                //         }
+                //
+                //         if movie.poster_path.is_some() {
+                //             let image_url =
+                //                 TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
+                //
+                //             if self.rendered_ids.contains(&movie.id) {
+                //                 ui.image(image_url);
+                //             } else if self.image_limiter.hit() {
+                //                 self.rendered_ids.insert(movie.id);
+                //                 ui.image(image_url);
+                //             } else {
+                //                 ui.spinner();
+                //             }
+                //
+                //             ui.heading(&movie.title);
+                //         }
+                //         ui.end_row();
+                //     }
+                //
+                //     let series_entries = &self.user_series;
+                //     for (i, entry) in series_entries.iter().enumerate() {
+                //         let series = &entry.series;
+                //
+                //         match self.selected_user_series {
+                //             Some(index) => {
+                //                 let mut checked = index == i;
+                //                 if ui.checkbox(&mut checked, "").clicked() {
+                //                     self.selected_user_series = Some(i);
+                //                     self.selected_user_movie = None;
+                //                     self.series_details_job = self.movie_db.get_series_details(series.id);
+                //                     self.selected_episode = None;
+                //                     self.selected_season = None;
+                //                 }
+                //             }
+                //             None => {
+                //                 if ui.checkbox(&mut false, "").clicked() {
+                //                     self.selected_user_series = Some(i);
+                //                     self.selected_user_movie = None;
+                //                     // start two jobs: fetch seasons, fetch episodes for each series
+                //                     // now since caching is internal to app.rs then im gonna bother w that
+                //                     self.series_details_job = self.movie_db.get_series_details(series.id);
+                //                     self.selected_episode = None;
+                //                     self.selected_season = None;
+                //                 }
+                //             }
+                //         }
+                //
+                //         if series.poster_path.is_some() {
+                //             let image_url =
+                //                 TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
+                //
+                //             if self.rendered_ids.contains(&series.id) {
+                //                 ui.image(image_url);
+                //             } else if self.image_limiter.hit() {
+                //                 self.rendered_ids.insert(series.id);
+                //                 ui.image(image_url);
+                //             } else {
+                //                 ui.spinner();
+                //             }
+                //             ui.heading(&series.name);
+                //         }
+                //         ui.end_row();
+                //     }
+                // });
             });
         });
     }
@@ -276,12 +373,10 @@ impl MovieApp {
         // This needs a lot of changes
         right.resizable(true).show(ctx, |ui| {
             if self.selected_user_movie.is_none() && self.selected_user_series.is_none() {
-                ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                    ui.heading("Nothing selected");
-                    ui.separator();
-                    ui.add_space(10.0);
-                    ui.label("Currently nothing is selected ._.");
-                });
+                ui.heading("Nothing selected");
+                ui.separator();
+                ui.add_space(10.0);
+                ui.label("Currently nothing is selected ._.");
                 return;
             }
 
@@ -505,11 +600,25 @@ impl MovieApp {
                         - [ ] Set default browser
                     */
 
-                    if ui.button("Auto-save").clicked() {}
-                    if ui.button("Enable caching").clicked() {}
-                    if ui.button("Set TMDB token").clicked() {}
-                    if ui.button("Set default browser").clicked() {}
-                    if ui.button("Sync").clicked() {}
+                    if ui.button("Auto-save").clicked() { 
+                        todo!()
+                    }
+
+                    if ui.button("Enable caching").clicked() {
+                        todo!()
+                    }
+
+                    if ui.button("Set TMDB token").clicked() {
+                        todo!()
+                    }
+
+                    if ui.button("Set default browser").clicked() {
+                        todo!()
+                    }
+
+                    if ui.button("Sync").clicked() {
+                        todo!()
+                    }
                 });
 
                 ui.menu_button("About", |_| {});
