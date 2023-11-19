@@ -187,16 +187,23 @@ impl MovieApp {
                     let desired_size = egui::vec2(ui.available_width(), 32.0);
                     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
 
-                    if response.clicked() {
-                        self.selected_user_movie = Some(i);
-                        self.selected_user_series = None;
-                    }
-
                     let movie = &entry.movie;
-                    let selected = match self.selected_user_movie {
+                    let mut selected = match self.selected_user_movie {
                         Some(index) => index == i, 
                         None => false,
                     };
+
+                    if response.clicked() {
+                        if selected {
+                            self.selected_user_movie = None;
+                            self.selected_user_series = None;
+                        } else {
+                            self.selected_user_movie = Some(i);
+                            self.selected_user_series = None;
+                        }
+
+                        selected = !selected;
+                    }
 
                     // Attach some meta-data to the response which can be used by screen readers:
                     // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
@@ -235,18 +242,25 @@ impl MovieApp {
                     let desired_size = egui::vec2(ui.available_width(), 32.0);
                     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
 
-                    if response.clicked() {
-                        self.selected_user_series = Some(i);
-                        self.selected_user_movie = None;
-                        self.series_details_job = self.movie_db.get_series_details(series.id);
-                        self.selected_episode = None;
-                        self.selected_season = None;
-                    }
-
-                    let selected = match self.selected_user_series {
+                    let mut selected = match self.selected_user_series {
                         Some(index) => index == i,
                         None => false,
                     };
+
+                    if response.clicked() {
+                        if selected {
+                            self.selected_user_movie = None;
+                            self.selected_user_series = None;
+                        } else {
+                            self.selected_user_series = Some(i);
+                            self.selected_user_movie = None;
+                            self.series_details_job = self.movie_db.get_series_details(series.id);
+                            self.selected_episode = None;
+                            self.selected_season = None;
+                        }
+
+                        selected = !selected;
+                    }
 
                     // Attach some meta-data to the response which can be used by screen readers:
                     // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
