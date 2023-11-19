@@ -11,7 +11,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::production;
-use egui::{Align, Layout, TopBottomPanel, Ui, Vec2, Visuals};
+use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Visuals};
 use egui::ahash::HashSet;
 use crate::limiter::RateLimiter;
 
@@ -208,32 +208,7 @@ impl MovieApp {
                     // Attach some meta-data to the response which can be used by screen readers:
                     // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
 
-                    if ui.is_rect_visible(rect) {
-                        let visuals = ui.style().interact(&response);
-                        let visuals2 = ui.style().noninteractive();
-
-                        // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
-                        let rect = rect.expand(visuals.expansion);
-
-                        if selected {
-                            ui.painter().rect(rect, 1.0, visuals.bg_fill, visuals.bg_stroke);
-                        } else {
-                            ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
-                        }
-
-                        let pos = rect.min + egui::Vec2::new(32.0, rect.height() / 2.0);
-                        let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
-                        ui.painter().text(pos, egui::Align2::LEFT_CENTER, &movie.title, font_id, egui::Color32::GRAY);
-
-                        if movie.poster_path.is_some() {
-                            let image_pos = rect.min + egui::vec2(3.0, 3.0);
-                            let desired_size = egui::vec2(20.0, 28.0);
-
-                            let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
-                            let image_url = TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
-                            egui::Image::new(image_url).paint_at(ui, image_rect);
-                        }
-                    }
+                    self.paint_entry(ui, selected, &movie.title, &movie.poster_path, &rect, &response);
                 }
 
                 for (i, entry) in self.user_series.iter().enumerate() {
@@ -264,33 +239,7 @@ impl MovieApp {
 
                     // Attach some meta-data to the response which can be used by screen readers:
                     // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
-
-                    if ui.is_rect_visible(rect) {
-                        let visuals = ui.style().interact(&response);
-                        let visuals2 = ui.style().noninteractive();
-
-                        // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
-                        let rect = rect.expand(visuals.expansion);
-
-                        if selected {
-                            ui.painter().rect(rect, 1.0, visuals.bg_fill, visuals.bg_stroke);
-                        } else {
-                            ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
-                        }
-
-                        let pos = rect.min + egui::Vec2::new(32.0, rect.height() / 2.0);
-                        let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
-                        ui.painter().text(pos, egui::Align2::LEFT_CENTER, &series.name, font_id, egui::Color32::GRAY);
-
-                        if series.poster_path.is_some() {
-                            let image_pos = rect.min + egui::vec2(3.0, 3.0);
-                            let desired_size = egui::vec2(20.0, 28.0);
-
-                            let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
-                            let image_url = TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
-                            egui::Image::new(image_url).paint_at(ui, image_rect);
-                        }
-                    }
+                    self.paint_entry(ui, selected, &series.name, &series.poster_path, &rect, &response);
                 }
 
                 // egui::Grid::new("grid_center").show(ui, |ui| {
@@ -380,6 +329,35 @@ impl MovieApp {
                 // });
             });
         });
+    }
+
+    fn paint_entry(&self, ui: &mut Ui, selected: bool, name: &str, poster_path: &Option<String>, rect: &Rect, response: &Response) {
+        if ui.is_rect_visible(*rect) {
+            let visuals = ui.style().interact(&response);
+            let visuals2 = ui.style().noninteractive();
+
+            // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
+            let rect = rect.expand(visuals.expansion);
+
+            if selected {
+                ui.painter().rect(rect, 1.0, visuals.bg_fill, visuals.bg_stroke);
+            } else {
+                ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
+            }
+
+            let pos = rect.min + Vec2::new(32.0, rect.height() / 2.0);
+            let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
+            ui.painter().text(pos, egui::Align2::LEFT_CENTER, name, font_id, egui::Color32::GRAY);
+
+            if let Some(ref path) = poster_path {
+                let image_pos = rect.min + egui::vec2(3.0, 3.0);
+                let desired_size = egui::vec2(20.0, 28.0);
+
+                let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
+                let image_url = TheMovieDB::get_full_poster_url(path, Width::W300);
+                egui::Image::new(image_url).paint_at(ui, image_rect);
+            }
+        }
     }
 
     fn right_panel(&mut self, ctx: &egui::Context) {
