@@ -190,6 +190,7 @@ pub enum EntryType {
 }
 
 // NOTE: Central list could hold UserProduction instead that is displayed on top of the right panel maybe?
+#[derive(Clone)]
 pub struct ListEntry {
     pub production_type: EntryType,
 
@@ -239,7 +240,7 @@ impl ListEntry {
     }
 }
 
-pub enum CentralListSorting {
+pub enum CentralListOrdering {
     // This will require to store the list separatly
     UserDefined,
     Alphabetic,

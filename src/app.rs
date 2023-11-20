@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::jobs::Job;
-use crate::production::{EntryType, ListEntry, Movie, Production, Series, UserMovie, UserSeries, CentralListSorting};
+use crate::production::{EntryType, ListEntry, Movie, Production, Series, UserMovie, UserSeries, CentralListOrdering};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{MovieView, SeriesView, TrailersView};
@@ -33,15 +33,15 @@ pub struct MovieApp {
     selected_user_series: Option<usize>,
 
     // Central panel
+    selected_entry: EntryType,
     // This list holds entries in custom order of the user. Used as a reference for sorting and searching. 
     // It is "mostly" immutable
-    central_list: Vec<ListEntry>,
-    // This list is will be highly mutable. It will be used for appropriate sorting (when a corresponding ordering 
+    central_user_list: Vec<ListEntry>,
+    // This list is highly mutable. It will be used for appropriate sorting (when a corresponding ordering 
     // buttons are clicked), shrinking and expanding (when used inputs name of the production in a central panel 
-    // search bar). This is the list that will be used for central panel drawing.
-    // central_draw_list: Vec<ListEntry>,
-
-    selected_entry: EntryType,
+    // search bar). This is the list that is used for central panel drawing.
+    central_draw_list: Vec<ListEntry>,
+    central_ordering: CentralListOrdering,
 
     // TODO: Add searchbar and fuzzy searching logic at some point.
     // searched_string: String,
@@ -99,8 +99,10 @@ impl MovieApp {
             selected_season: None,
             selected_episode: None,
 
-            central_list: Vec::new(),
             selected_entry: EntryType::None,
+            central_user_list: Vec::new(),
+            central_draw_list: Vec::new(),
+            central_ordering: CentralListOrdering::UserDefined,
 
             series_view: SeriesView::new(),
             movie_view: MovieView::new(),
@@ -110,6 +112,51 @@ impl MovieApp {
             movie_db,
             config,
         }
+    }
+
+    fn central_list_reload(&mut self) {
+        self.central_user_list.clear();
+
+        for series in &self.user_series {
+            let entry = ListEntry::from_series(&series.series);
+            self.central_user_list.push(entry);
+        }
+
+        for movie in &self.user_movies {
+            let entry = ListEntry::from_movie(&movie.movie);
+            self.central_user_list.push(entry);
+        }
+
+        self.central_draw_list_update();
+    }
+
+    fn central_list_add_movie(&mut self, movie: &Movie) {
+        let entry = ListEntry::from_movie(movie);
+        self.central_user_list.push(entry);
+        self.central_draw_list_update();
+    }
+
+    fn central_list_add_series(&mut self, series: &Series) {
+        let entry = ListEntry::from_series(series);
+        self.central_user_list.push(entry);
+        self.central_draw_list_update();
+    }
+
+    fn central_draw_list_update(&mut self) {
+        self.central_draw_list.clear();
+        self.central_draw_list = self.central_user_list.clone();
+
+        match self.central_ordering {
+            CentralListOrdering::UserDefined => {},
+            CentralListOrdering::Alphabetic => 
+                self.central_draw_list.sort_by(|a, b| a.name.cmp(&b.name)),
+            CentralListOrdering::RatingAscending => 
+                self.central_draw_list.sort_by(|a, b| a.rating.partial_cmp(&b.rating).unwrap()),
+            CentralListOrdering::RatingDescending => 
+                self.central_draw_list.sort_by(|a, b| b.rating.partial_cmp(&a.rating).unwrap()),
+        }
+
+        // TODO: Apply searchbar query here.
     }
 
     pub fn setup(&mut self) {
@@ -202,19 +249,23 @@ impl MovieApp {
 
                 ui.with_layout(egui::Layout::right_to_left(Align::Max), |ui| {
                     if ui.button("U").on_hover_text("User defined ordering").clicked() {
-                        unimplemented!("lol");
+                        self.central_ordering = CentralListOrdering::UserDefined;
+                        self.central_draw_list_update();
                     }
 
                     if ui.button("A").on_hover_text("Alphabetic ordering").clicked() {
-                        self.central_list.sort_by(|a, b| a.name.cmp(&b.name));
+                        self.central_ordering = CentralListOrdering::Alphabetic;
+                        self.central_draw_list_update();
                     }
 
                     if ui.button("^").on_hover_text("Ascending rating ordering").clicked() {
-                        self.central_list.sort_by(|a, b| a.rating.partial_cmp(&b.rating).unwrap() );
+                        self.central_ordering = CentralListOrdering::RatingAscending;
+                        self.central_draw_list_update();
                     }
 
                     if ui.button("v").on_hover_text("Desceding rating ordering").clicked() {
-                        self.central_list.sort_by(|a, b| b.rating.partial_cmp(&a.rating).unwrap() );
+                        self.central_ordering = CentralListOrdering::RatingDescending;
+                        self.central_draw_list_update();
                     }
                 });
 
@@ -223,7 +274,7 @@ impl MovieApp {
 
             // NOTE: This is an outline of a new list view. Kind of messy and still needs some work.
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                for entry in &self.central_list {
+                for entry in &self.central_draw_list {
                     let desired_size = egui::vec2(ui.available_width(), 32.0);
                     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
 
@@ -284,16 +335,6 @@ impl MovieApp {
                             ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
                         }
 
-                        let pos = rect.min + Vec2::new(32.0, rect.height() / 2.0);
-                        let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
-                        ui.painter().text(
-                            pos,
-                            egui::Align2::LEFT_CENTER,
-                            &entry.name,
-                            font_id,
-                            egui::Color32::GRAY,
-                        );
-
                         if let Some(ref path) = entry.poster_path {
                             let image_pos = rect.min + egui::vec2(3.0, 3.0);
                             let desired_size = egui::vec2(20.0, 28.0);
@@ -302,6 +343,21 @@ impl MovieApp {
                             let image_url = TheMovieDB::get_full_poster_url(path, Width::W300);
                             egui::Image::new(image_url).paint_at(ui, image_rect);
                         }
+
+                        let font_pos = rect.min + Vec2::new(32.0, rect.height() / 2.0);
+                        let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
+                        ui.painter().text(
+                            font_pos,
+                            egui::Align2::LEFT_CENTER,
+                            &entry.name,
+                            font_id,
+                            egui::Color32::GRAY,
+                        );
+
+                        // TODO: Add "move up", "move down" and "delete" button that show up
+                        //       whenever the list entry has mouse hover
+                        //       
+                        // TODO: List entries could also be draggable?
                     }
                 }
 
@@ -584,17 +640,7 @@ impl MovieApp {
                             Err(msg) => eprintln!("{}", msg),
                         }
 
-                        self.central_list.clear();
-
-                        for series in &self.user_series {
-                            let entry = ListEntry::from_series(&series.series);
-                            self.central_list.push(entry);
-                        }
-
-                        for movie in &self.user_movies {
-                            let entry = ListEntry::from_movie(&movie.movie);
-                            self.central_list.push(entry);
-                        }
+                        self.central_list_reload();
                     }
                     if ui.button("Load data from file").clicked() {}
                 });
@@ -675,9 +721,7 @@ impl MovieApp {
                                 user_rating: 0.0,
                             };
                             self.user_movies.push(new_data);
-
-                            let entry = ListEntry::from_movie(movie);
-                            self.central_list.push(entry);
+                            self.central_list_add_movie(movie);
                         }
                         ui.close_menu()
                     }
@@ -771,9 +815,7 @@ impl MovieApp {
                                 season_notes: Vec::new(),
                             };
                             self.user_series.push(new_data);
-
-                            let entry = ListEntry::from_series(series);
-                            self.central_list.push(entry);
+                            self.central_list_add_series(series);
                         }
                         ui.close_menu()
                     }
