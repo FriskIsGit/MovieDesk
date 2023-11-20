@@ -238,3 +238,19 @@ impl ListEntry {
         }
     }
 }
+
+pub enum CentralListSorting {
+    // This will require to store the list separatly
+    UserDefined,
+    Alphabetic,
+    RatingAscending,
+    RatingDescending,
+
+    // TODO(maybe?):
+    // UserRatingAscending,
+    // UserRatingDescending,
+    // WatchedFirst,
+    // UnwatchedFirst,
+    // Favourites,
+    // WatchTime,
+}

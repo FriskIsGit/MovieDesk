@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::jobs::Job;
-use crate::production::{EntryType, ListEntry, Movie, Production, Series, UserMovie, UserSeries};
+use crate::production::{EntryType, ListEntry, Movie, Production, Series, UserMovie, UserSeries, CentralListSorting};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{MovieView, SeriesView, TrailersView};
@@ -33,8 +33,18 @@ pub struct MovieApp {
     selected_user_series: Option<usize>,
 
     // Central panel
+    // This list holds entries in custom order of the user. Used as a reference for sorting and searching. 
+    // It is "mostly" immutable
     central_list: Vec<ListEntry>,
+    // This list is will be highly mutable. It will be used for appropriate sorting (when a corresponding ordering 
+    // buttons are clicked), shrinking and expanding (when used inputs name of the production in a central panel 
+    // search bar). This is the list that will be used for central panel drawing.
+    // central_draw_list: Vec<ListEntry>,
+
     selected_entry: EntryType,
+
+    // TODO: Add searchbar and fuzzy searching logic at some point.
+    // searched_string: String,
 
     // Notes
     series_details_job: Job<SeriesDetails>,
@@ -187,7 +197,28 @@ impl MovieApp {
     fn central_panel(&mut self, ctx: &egui::Context) {
         let center = egui::CentralPanel::default();
         center.show(ctx, |ui| {
-            ui.heading("Your movies!");
+            ui.horizontal(|ui| {
+                ui.heading("Your movies!");
+
+                ui.with_layout(egui::Layout::right_to_left(Align::Max), |ui| {
+                    if ui.button("U").on_hover_text("User defined ordering").clicked() {
+                        unimplemented!("lol");
+                    }
+
+                    if ui.button("A").on_hover_text("Alphabetic ordering").clicked() {
+                        self.central_list.sort_by(|a, b| a.name.cmp(&b.name));
+                    }
+
+                    if ui.button("^").on_hover_text("Ascending rating ordering").clicked() {
+                        self.central_list.sort_by(|a, b| a.rating.partial_cmp(&b.rating).unwrap() );
+                    }
+
+                    if ui.button("v").on_hover_text("Desceding rating ordering").clicked() {
+                        self.central_list.sort_by(|a, b| b.rating.partial_cmp(&a.rating).unwrap() );
+                    }
+                });
+
+            });
             ui.separator();
 
             // NOTE: This is an outline of a new list view. Kind of messy and still needs some work.
@@ -274,150 +305,40 @@ impl MovieApp {
                     }
                 }
 
-                // for (i, entry) in self.user_movies.iter().enumerate() {
-                //     let desired_size = egui::vec2(ui.available_width(), 32.0);
-                //     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
                 //
-                //     let movie = &entry.movie;
-                //     let mut selected = match self.selected_user_movie {
-                //         Some(index) => index == i,
-                //         None => false,
-                //     };
+                // NOTE: This shouldn't be needed here anyways. All posters should be cached from the moment when
+                //       user adds a new production to the list.
                 //
-                //     if response.clicked() {
-                //         if selected {
-                //             self.selected_user_movie = None;
-                //             self.selected_user_series = None;
-                //         } else {
-                //             self.selected_user_movie = Some(i);
-                //             self.selected_user_series = None;
-                //         }
+                // if movie.poster_path.is_some() {
+                //     let image_url =
+                //         TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
                 //
-                //         selected = !selected;
+                //     if self.rendered_ids.contains(&movie.id) {
+                //         ui.image(image_url);
+                //     } else if self.image_limiter.hit() {
+                //         self.rendered_ids.insert(movie.id);
+                //         ui.image(image_url);
+                //     } else {
+                //         ui.spinner();
                 //     }
                 //
-                //     // Attach some meta-data to the response which can be used by screen readers:
-                //     // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
-                //
-                //     self.paint_entry(ui, selected, &movie.title, &movie.poster_path, &rect, &response);
+                //     ui.heading(&movie.title);
                 // }
                 //
-                // for (i, entry) in self.user_series.iter().enumerate() {
-                //     let series = &entry.series;
+                // if series.poster_path.is_some() {
+                //     let image_url =
+                //         TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
                 //
-                //     let desired_size = egui::vec2(ui.available_width(), 32.0);
-                //     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
-                //
-                //     let mut selected = match self.selected_user_series {
-                //         Some(index) => index == i,
-                //         None => false,
-                //     };
-                //
-                //     if response.clicked() {
-                //         if selected {
-                //             self.selected_user_movie = None;
-                //             self.selected_user_series = None;
-                //         } else {
-                //             self.selected_user_series = Some(i);
-                //             self.selected_user_movie = None;
-                //             self.series_details_job = self.movie_db.get_series_details(series.id);
-                //             self.selected_episode = None;
-                //             self.selected_season = None;
-                //         }
-                //
-                //         selected = !selected;
+                //     if self.rendered_ids.contains(&series.id) {
+                //         ui.image(image_url);
+                //     } else if self.image_limiter.hit() {
+                //         self.rendered_ids.insert(series.id);
+                //         ui.image(image_url);
+                //     } else {
+                //         ui.spinner();
                 //     }
-                //
-                //     // Attach some meta-data to the response which can be used by screen readers:
-                //     // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
-                //     self.paint_entry(ui, selected, &series.name, &series.poster_path, &rect, &response);
+                //     ui.heading(&series.name);
                 // }
-
-                // egui::Grid::new("grid_center").show(ui, |ui| {
-                //     // NOTE: This is a placeholder. You should be able to click on an entire
-                //     //       grid entry and then the whole thing should be highlighted.
-                //     let movie_entries = &self.user_movies;
-                //     for (i, entry) in movie_entries.iter().enumerate() {
-                //         let movie = &entry.movie;
-                //         match self.selected_user_movie {
-                //             Some(index) => {
-                //                 let mut checked = index == i;
-                //                 if ui.checkbox(&mut checked, "").clicked() {
-                //                     self.selected_user_movie = Some(i);
-                //                     self.selected_user_series = None;
-                //                 }
-                //             }
-                //             None => {
-                //                 if ui.checkbox(&mut false, "").clicked() {
-                //                     self.selected_user_movie = Some(i);
-                //                     self.selected_user_series = None;
-                //                 }
-                //             }
-                //         }
-                //
-                //         if movie.poster_path.is_some() {
-                //             let image_url =
-                //                 TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
-                //
-                //             if self.rendered_ids.contains(&movie.id) {
-                //                 ui.image(image_url);
-                //             } else if self.image_limiter.hit() {
-                //                 self.rendered_ids.insert(movie.id);
-                //                 ui.image(image_url);
-                //             } else {
-                //                 ui.spinner();
-                //             }
-                //
-                //             ui.heading(&movie.title);
-                //         }
-                //         ui.end_row();
-                //     }
-                //
-                //     let series_entries = &self.user_series;
-                //     for (i, entry) in series_entries.iter().enumerate() {
-                //         let series = &entry.series;
-                //
-                //         match self.selected_user_series {
-                //             Some(index) => {
-                //                 let mut checked = index == i;
-                //                 if ui.checkbox(&mut checked, "").clicked() {
-                //                     self.selected_user_series = Some(i);
-                //                     self.selected_user_movie = None;
-                //                     self.series_details_job = self.movie_db.get_series_details(series.id);
-                //                     self.selected_episode = None;
-                //                     self.selected_season = None;
-                //                 }
-                //             }
-                //             None => {
-                //                 if ui.checkbox(&mut false, "").clicked() {
-                //                     self.selected_user_series = Some(i);
-                //                     self.selected_user_movie = None;
-                //                     // start two jobs: fetch seasons, fetch episodes for each series
-                //                     // now since caching is internal to app.rs then im gonna bother w that
-                //                     self.series_details_job = self.movie_db.get_series_details(series.id);
-                //                     self.selected_episode = None;
-                //                     self.selected_season = None;
-                //                 }
-                //             }
-                //         }
-                //
-                //         if series.poster_path.is_some() {
-                //             let image_url =
-                //                 TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
-                //
-                //             if self.rendered_ids.contains(&series.id) {
-                //                 ui.image(image_url);
-                //             } else if self.image_limiter.hit() {
-                //                 self.rendered_ids.insert(series.id);
-                //                 ui.image(image_url);
-                //             } else {
-                //                 ui.spinner();
-                //             }
-                //             ui.heading(&series.name);
-                //         }
-                //         ui.end_row();
-                //     }
-                // });
             });
         });
     }
@@ -662,6 +583,8 @@ impl MovieApp {
                             }
                             Err(msg) => eprintln!("{}", msg),
                         }
+
+                        self.central_list.clear();
 
                         for series in &self.user_series {
                             let entry = ListEntry::from_series(&series.series);
