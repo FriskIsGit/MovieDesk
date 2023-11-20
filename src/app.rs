@@ -36,8 +36,8 @@ pub struct MovieApp {
     season_details_job: Job<SeasonDetails>,
     series_details: Option<SeriesDetails>,
     season_details: Option<SeasonDetails>,
-    selected_season: Option<u32>,
-    selected_episode: Option<u32>,
+    selected_season: Option<u32>, //cannot be 0
+    selected_episode: Option<u32>, //cannot be 0
 
     // View states
     series_view: SeriesView,
@@ -440,33 +440,33 @@ impl MovieApp {
 
                     let after_render_season = self.selected_season.unwrap_or(0);
                     if before_render_season != after_render_season {
-                        self.season_details_job = self.movie_db.get_season_details(series.id, after_render_season);
                         self.selected_episode = None;
                     }
-                    if self.selected_season.is_some() {
-                        if let Some(season_details) = self.season_details_job.poll_owned() {
-                            self.season_details = Some(season_details);
+                    if let Some(season_num) = self.selected_season {
+                        let season_num = season_num as usize;
+                        let display = if let Some(episode) = self.selected_episode {
+                            format!("EP{}", episode)
+                        } else {
+                            "None".to_string()
+                        };
+                        let all_episodes;
+                        if details.has_specials() {
+                            all_episodes = details.seasons[season_num].episode_count;
+                        } else {
+                            all_episodes = details.seasons[season_num - 1].episode_count;
                         }
-                        if let Some(season_details) = &self.season_details {
-                            let display = if self.selected_episode.is_some() {
-                                format!("EP{}", self.selected_episode.unwrap())
-                            } else {
-                                "None".to_string()
-                            };
-                            let all_episodes = season_details.episodes.len();
-                            egui::ComboBox::from_label("Select episode!")
-                                .selected_text(display)
-                                .show_ui(ui, |ui| {
-                                    for i in 1..=all_episodes {
-                                        ui.selectable_value(
-                                            &mut self.selected_episode,
-                                            Some(i as u32),
-                                            format!("EP{}", i),
-                                        );
-                                    }
-                                    ui.selectable_value(&mut self.selected_episode, None, "None");
-                                });
-                        }
+                        egui::ComboBox::from_label("Select episode!")
+                            .selected_text(display)
+                            .show_ui(ui, |ui| {
+                                for i in 1..=all_episodes {
+                                    ui.selectable_value(
+                                        &mut self.selected_episode,
+                                        Some(i),
+                                        format!("EP{}", i),
+                                    );
+                                }
+                                ui.selectable_value(&mut self.selected_episode, None, "None");
+                            });
                     }
                 }
             }

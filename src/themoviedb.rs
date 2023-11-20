@@ -53,7 +53,7 @@ impl TheMovieDB {
         let request = self.new_authorized_get(&url);
 
         Job::new(move || {
-            println!("Executing request..");
+            println!("Executing request in search_production");
             let Ok(response) = request.call() else {
                 panic!("Error on sending request");
             };
@@ -105,7 +105,7 @@ impl TheMovieDB {
         let request = self.new_authorized_get(&url);
 
         Job::new(move || {
-            println!("Executing request..");
+            println!("Executing request in get_series_details");
 
             let Ok(response) = request.call() else {
                 panic!("Error on sending request");
@@ -120,7 +120,7 @@ impl TheMovieDB {
         let request = self.new_authorized_get(&url);
 
         Job::new(move || {
-            println!("Executing request..");
+            println!("Executing request in get_season_details");
             let Ok(response) = request.call() else {
                 panic!("Error on sending request");
             };
@@ -129,12 +129,28 @@ impl TheMovieDB {
         })
     }
 
+    pub fn get_seasons(&self, series_id: u32) {
+        let url = format!("{SERIES_DETAILS_URL}{series_id}/season/&append_to_response=3");
+        let request = self.new_authorized_get(&url);
+
+        println!("Executing request in get_season_details");
+        match request.call() {
+            Ok(response) => {
+                let json_response = response.into_string().unwrap();
+                println!("{}", json_response);
+            },
+            Err(err) => {
+                eprintln!("{}", err.to_string())
+            }
+        }
+    }
+
     pub fn get_movie_details(&self, movie_id: u32) -> Job<MovieDetails> {
         let url = format!("{MOVIE_DETAILS_URL}{movie_id}");
         let request = self.new_authorized_get(&url);
 
         Job::new(move || {
-            println!("Executing request..");
+            println!("Executing request in get_movie_details");
             let Ok(response) = request.call() else {
                 panic!("Error on sending request");
             };
@@ -212,7 +228,7 @@ impl TheMovieDB {
         let request = agent.get(poster_url);
 
         std::thread::spawn(move || {
-            println!("Executing request..");
+            println!("Executing request in download_poster");
             let Ok(response) = request.call() else {
                 panic!("Error on sending request");
             };

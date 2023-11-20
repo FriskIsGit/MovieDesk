@@ -12,6 +12,12 @@ pub struct SeriesDetails {
     pub seasons: Vec<Season>,
 }
 
+impl SeriesDetails {
+    pub fn has_specials(&self) -> bool {
+        self.seasons[0].season_number == 0
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Season {
     pub air_date: Option<String>,
