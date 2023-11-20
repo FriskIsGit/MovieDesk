@@ -1,19 +1,19 @@
 use crate::config::Config;
 use crate::jobs::Job;
-use crate::production::{Movie, Production, Series, UserMovie, UserSeries};
+use crate::production::{EntryType, ListEntry, Movie, Production, Series, UserMovie, UserSeries};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
-use crate::view::{SeriesView, MovieView, TrailersView};
+use crate::view::{MovieView, SeriesView, TrailersView};
 
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::production;
-use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Visuals};
-use egui::ahash::HashSet;
 use crate::limiter::RateLimiter;
+use crate::production;
+use egui::ahash::HashSet;
+use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Visuals};
 
 pub struct MovieApp {
     // Left panel
@@ -25,18 +25,23 @@ pub struct MovieApp {
     rendered_ids: HashSet<u32>,
     fetch_productions_job: Job<(String, Vec<Production>)>,
 
-    // Right and center panel
+    // Right panel
     user_movies: Vec<UserMovie>,
     user_series: Vec<UserSeries>,
+    // TODO(!!!): Those two need to be removed or changed in one way or another
     selected_user_movie: Option<usize>,
     selected_user_series: Option<usize>,
+
+    // Central panel
+    central_list: Vec<ListEntry>,
+    selected_entry: EntryType,
 
     // Notes
     series_details_job: Job<SeriesDetails>,
     season_details_job: Job<SeasonDetails>,
     series_details: Option<SeriesDetails>,
     season_details: Option<SeasonDetails>,
-    selected_season: Option<u32>, //cannot be 0
+    selected_season: Option<u32>,  //cannot be 0
     selected_episode: Option<u32>, //cannot be 0
 
     // View states
@@ -78,10 +83,14 @@ impl MovieApp {
             selected_user_series: None,
             series_details_job: Job::Empty,
             season_details_job: Job::Empty,
+
             series_details: None,
             season_details: None,
             selected_season: None,
             selected_episode: None,
+
+            central_list: Vec::new(),
+            selected_entry: EntryType::None,
 
             series_view: SeriesView::new(),
             movie_view: MovieView::new(),
@@ -183,23 +192,46 @@ impl MovieApp {
 
             // NOTE: This is an outline of a new list view. Kind of messy and still needs some work.
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                for (i, entry) in self.user_movies.iter().enumerate() {
+                for entry in &self.central_list {
                     let desired_size = egui::vec2(ui.available_width(), 32.0);
                     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
 
-                    let movie = &entry.movie;
-                    let mut selected = match self.selected_user_movie {
-                        Some(index) => index == i, 
-                        None => false,
-                    };
+                    let mut selected = entry.is_selected(&self.selected_entry);
 
                     if response.clicked() {
                         if selected {
+                            self.selected_entry = EntryType::None;
+
                             self.selected_user_movie = None;
                             self.selected_user_series = None;
                         } else {
-                            self.selected_user_movie = Some(i);
+                            self.selected_user_movie = None;
                             self.selected_user_series = None;
+
+                            match entry.production_type {
+                                EntryType::Movie(id) => {
+                                    for (i, movie) in self.user_movies.iter().enumerate() {
+                                        if movie.movie.id == id {
+                                            self.selected_user_movie = Some(i);
+                                        }
+                                    }
+                                }
+
+                                EntryType::Series(id) => {
+                                    for (i, series) in self.user_series.iter().enumerate() {
+                                        if series.series.id == id {
+                                            self.selected_user_series = Some(i);
+                                            // TODO: Shouldn't be called here. There is no need to call this every
+                                            //       time we click on any other series entries
+                                            self.series_details_job = self.movie_db.get_series_details(id);
+                                        }
+                                    }
+                                }
+
+                                EntryType::None => unreachable!(),
+                            }
+
+                            self.selected_entry = entry.production_type;
                         }
 
                         selected = !selected;
@@ -208,39 +240,98 @@ impl MovieApp {
                     // Attach some meta-data to the response which can be used by screen readers:
                     // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
 
-                    self.paint_entry(ui, selected, &movie.title, &movie.poster_path, &rect, &response);
-                }
+                    if ui.is_rect_visible(rect) {
+                        let visuals = ui.style().interact(&response);
+                        let visuals2 = ui.style().noninteractive();
 
-                for (i, entry) in self.user_series.iter().enumerate() {
-                    let series = &entry.series;
+                        // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
+                        let rect = rect.expand(visuals.expansion);
 
-                    let desired_size = egui::vec2(ui.available_width(), 32.0);
-                    let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
-
-                    let mut selected = match self.selected_user_series {
-                        Some(index) => index == i,
-                        None => false,
-                    };
-
-                    if response.clicked() {
                         if selected {
-                            self.selected_user_movie = None;
-                            self.selected_user_series = None;
+                            ui.painter().rect(rect, 1.0, visuals.bg_fill, visuals.bg_stroke);
                         } else {
-                            self.selected_user_series = Some(i);
-                            self.selected_user_movie = None;
-                            self.series_details_job = self.movie_db.get_series_details(series.id);
-                            self.selected_episode = None;
-                            self.selected_season = None;
+                            ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
                         }
 
-                        selected = !selected;
-                    }
+                        let pos = rect.min + Vec2::new(32.0, rect.height() / 2.0);
+                        let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
+                        ui.painter().text(
+                            pos,
+                            egui::Align2::LEFT_CENTER,
+                            &entry.name,
+                            font_id,
+                            egui::Color32::GRAY,
+                        );
 
-                    // Attach some meta-data to the response which can be used by screen readers:
-                    // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
-                    self.paint_entry(ui, selected, &series.name, &series.poster_path, &rect, &response);
+                        if let Some(ref path) = entry.poster_path {
+                            let image_pos = rect.min + egui::vec2(3.0, 3.0);
+                            let desired_size = egui::vec2(20.0, 28.0);
+
+                            let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
+                            let image_url = TheMovieDB::get_full_poster_url(path, Width::W300);
+                            egui::Image::new(image_url).paint_at(ui, image_rect);
+                        }
+                    }
                 }
+
+                // for (i, entry) in self.user_movies.iter().enumerate() {
+                //     let desired_size = egui::vec2(ui.available_width(), 32.0);
+                //     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+                //
+                //     let movie = &entry.movie;
+                //     let mut selected = match self.selected_user_movie {
+                //         Some(index) => index == i,
+                //         None => false,
+                //     };
+                //
+                //     if response.clicked() {
+                //         if selected {
+                //             self.selected_user_movie = None;
+                //             self.selected_user_series = None;
+                //         } else {
+                //             self.selected_user_movie = Some(i);
+                //             self.selected_user_series = None;
+                //         }
+                //
+                //         selected = !selected;
+                //     }
+                //
+                //     // Attach some meta-data to the response which can be used by screen readers:
+                //     // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
+                //
+                //     self.paint_entry(ui, selected, &movie.title, &movie.poster_path, &rect, &response);
+                // }
+                //
+                // for (i, entry) in self.user_series.iter().enumerate() {
+                //     let series = &entry.series;
+                //
+                //     let desired_size = egui::vec2(ui.available_width(), 32.0);
+                //     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+                //
+                //     let mut selected = match self.selected_user_series {
+                //         Some(index) => index == i,
+                //         None => false,
+                //     };
+                //
+                //     if response.clicked() {
+                //         if selected {
+                //             self.selected_user_movie = None;
+                //             self.selected_user_series = None;
+                //         } else {
+                //             self.selected_user_series = Some(i);
+                //             self.selected_user_movie = None;
+                //             self.series_details_job = self.movie_db.get_series_details(series.id);
+                //             self.selected_episode = None;
+                //             self.selected_season = None;
+                //         }
+                //
+                //         selected = !selected;
+                //     }
+                //
+                //     // Attach some meta-data to the response which can be used by screen readers:
+                //     // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
+                //     self.paint_entry(ui, selected, &series.name, &series.poster_path, &rect, &response);
+                // }
 
                 // egui::Grid::new("grid_center").show(ui, |ui| {
                 //     // NOTE: This is a placeholder. You should be able to click on an entire
@@ -331,7 +422,15 @@ impl MovieApp {
         });
     }
 
-    fn paint_entry(&self, ui: &mut Ui, selected: bool, name: &str, poster_path: &Option<String>, rect: &Rect, response: &Response) {
+    fn paint_entry(
+        &self,
+        ui: &mut Ui,
+        selected: bool,
+        name: &str,
+        poster_path: &Option<String>,
+        rect: &Rect,
+        response: &Response,
+    ) {
         if ui.is_rect_visible(*rect) {
             let visuals = ui.style().interact(&response);
             let visuals2 = ui.style().noninteractive();
@@ -347,7 +446,8 @@ impl MovieApp {
 
             let pos = rect.min + Vec2::new(32.0, rect.height() / 2.0);
             let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
-            ui.painter().text(pos, egui::Align2::LEFT_CENTER, name, font_id, egui::Color32::GRAY);
+            ui.painter()
+                .text(pos, egui::Align2::LEFT_CENTER, name, font_id, egui::Color32::GRAY);
 
             if let Some(ref path) = poster_path {
                 let image_pos = rect.min + egui::vec2(3.0, 3.0);
@@ -459,11 +559,7 @@ impl MovieApp {
                             .selected_text(display)
                             .show_ui(ui, |ui| {
                                 for i in 1..=all_episodes {
-                                    ui.selectable_value(
-                                        &mut self.selected_episode,
-                                        Some(i),
-                                        format!("EP{}", i),
-                                    );
+                                    ui.selectable_value(&mut self.selected_episode, Some(i), format!("EP{}", i));
                                 }
                                 ui.selectable_value(&mut self.selected_episode, None, "None");
                             });
@@ -556,6 +652,7 @@ impl MovieApp {
                             eprintln!("{}", outcome.unwrap_err())
                         }
                     }
+
                     if ui.button("Load data").clicked() {
                         let outcome = production::deserialize_user_productions(None);
                         match outcome {
@@ -563,7 +660,17 @@ impl MovieApp {
                                 self.user_series = user_prods.0;
                                 self.user_movies = user_prods.1;
                             }
-                            Err(msg) => eprintln!("{}", msg)
+                            Err(msg) => eprintln!("{}", msg),
+                        }
+
+                        for series in &self.user_series {
+                            let entry = ListEntry::from_series(&series.series);
+                            self.central_list.push(entry);
+                        }
+
+                        for movie in &self.user_movies {
+                            let entry = ListEntry::from_movie(&movie.movie);
+                            self.central_list.push(entry);
                         }
                     }
                     if ui.button("Load data from file").clicked() {}
@@ -592,7 +699,7 @@ impl MovieApp {
                         - [ ] Set default browser
                     */
 
-                    if ui.button("Auto-save").clicked() { 
+                    if ui.button("Auto-save").clicked() {
                         todo!()
                     }
 
@@ -645,6 +752,9 @@ impl MovieApp {
                                 user_rating: 0.0,
                             };
                             self.user_movies.push(new_data);
+
+                            let entry = ListEntry::from_movie(movie);
+                            self.central_list.push(entry);
                         }
                         ui.close_menu()
                     }
@@ -738,6 +848,9 @@ impl MovieApp {
                                 season_notes: Vec::new(),
                             };
                             self.user_series.push(new_data);
+
+                            let entry = ListEntry::from_series(series);
+                            self.central_list.push(entry);
                         }
                         ui.close_menu()
                     }
