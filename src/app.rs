@@ -25,13 +25,6 @@ pub struct MovieApp {
     rendered_ids: HashSet<u32>,
     fetch_productions_job: Job<(String, Vec<Production>)>,
 
-    // Right panel
-    user_movies: Vec<UserMovie>,
-    user_series: Vec<UserSeries>,
-    // TODO(!!!): Those two need to be removed or changed in one way or another
-    selected_user_movie: Option<usize>,
-    selected_user_series: Option<usize>,
-
     // Central panel
     selected_entry: EntryType,
     // This list holds entries in custom order of the user. Used as a reference for sorting and searching. 
@@ -46,13 +39,15 @@ pub struct MovieApp {
     // TODO: Add searchbar and fuzzy searching logic at some point.
     searched_string: String,
 
+    // Right panel
+    user_movies: Vec<UserMovie>,
+    user_series: Vec<UserSeries>,
     // Notes
     series_details_job: Job<SeriesDetails>,
     season_details_job: Job<SeasonDetails>,
     series_details: Option<SeriesDetails>,
     season_details: Option<SeasonDetails>,
-    selected_season: Option<u32>,  //cannot be 0
-    selected_episode: Option<u32>, //cannot be 0
+    selection: Selection,
 
     // View states
     series_view: SeriesView,
@@ -89,15 +84,12 @@ impl MovieApp {
 
             user_movies: Vec::new(),
             user_series: Vec::new(),
-            selected_user_movie: None,
-            selected_user_series: None,
+
             series_details_job: Job::Empty,
             season_details_job: Job::Empty,
-
             series_details: None,
             season_details: None,
-            selected_season: None,
-            selected_episode: None,
+            selection: Selection::new(),
 
             selected_entry: EntryType::None,
             central_user_list: Vec::new(),
@@ -306,18 +298,13 @@ impl MovieApp {
                     if response.clicked() {
                         if selected {
                             self.selected_entry = EntryType::None;
-
-                            self.selected_user_movie = None;
-                            self.selected_user_series = None;
+                            self.selection.index = None;
                         } else {
-                            self.selected_user_movie = None;
-                            self.selected_user_series = None;
-
                             match entry.production_id {
                                 EntryType::Movie(id) => {
                                     for (i, movie) in self.user_movies.iter().enumerate() {
                                         if movie.movie.id == id {
-                                            self.selected_user_movie = Some(i);
+                                            self.selection.index = Some(i);
                                         }
                                     }
                                 }
@@ -325,9 +312,9 @@ impl MovieApp {
                                 EntryType::Series(id) => {
                                     for (i, series) in self.user_series.iter().enumerate() {
                                         if series.series.id == id {
-                                            self.selected_user_series = Some(i);
-                                            self.selected_season = None;
-                                            self.selected_episode = None;
+                                            self.selection.index = Some(i);
+                                            self.selection.season = None;
+                                            self.selection.episode = None;
                                             // TODO: Shouldn't be called here. There is no need to call this every
                                             //       time we click on any other series entries
                                             self.series_details_job = self.movie_db.get_series_details(id);
@@ -466,25 +453,24 @@ impl MovieApp {
         let right = egui::SidePanel::right("right_panel");
         // This needs a lot of changes
         right.resizable(true).show(ctx, |ui| {
-            if self.selected_user_movie.is_none() && self.selected_user_series.is_none() {
-                ui.heading("Nothing selected");
-                ui.separator();
-                ui.add_space(10.0);
-                ui.label("Currently nothing is selected ._.");
-                return;
-            }
-
             let heading;
             let is_movie;
-            match self.selected_user_movie {
-                Some(_) => {
+            match self.selected_entry {
+                EntryType::Movie(_) => {
                     heading = "Selected movie";
                     is_movie = true;
                 }
-                None => {
+                EntryType::Series(_) => {
                     // assuming we reset selected_user_movie
                     heading = "Selected series";
                     is_movie = false;
+                }
+                EntryType::None => {
+                    ui.heading("Nothing selected");
+                    ui.separator();
+                    ui.add_space(10.0);
+                    ui.label("Currently nothing is selected ._.");
+                    return;
                 }
             }
             ui.heading(heading);
@@ -496,8 +482,9 @@ impl MovieApp {
                 ui.label("Currently nothing is selected ._.");
                 return;
             };*/
+            let index = self.selection.index();
             if is_movie {
-                let Some(user_movie) = self.user_movies.get_mut(self.selected_user_movie.unwrap()) else {
+                let Some(user_movie) = self.user_movies.get_mut(index) else {
                     return;
                 };
                 let movie = &user_movie.movie;
@@ -509,7 +496,7 @@ impl MovieApp {
                     ui.add_sized([100.0, 100.0], image);
                 }
             } else {
-                let Some(user_series) = self.user_series.get_mut(self.selected_user_series.unwrap()) else {
+                let Some(user_series) = self.user_series.get_mut(index) else {
                     return;
                 };
                 let series = &user_series.series;
@@ -525,28 +512,28 @@ impl MovieApp {
                     self.series_details = Some(details);
                 }
                 if let Some(details) = &self.series_details {
-                    let display = if self.selected_season.is_some() {
-                        format!("S{}", self.selected_season.unwrap())
+                    let display = if self.selection.season.is_some() {
+                        format!("S{}", self.selection.season())
                     } else {
                         "None".to_string()
                     };
-                    let before_render_season = self.selected_season.unwrap_or(0);
+                    let before_render_season = self.selection.season.unwrap_or(0);
                     egui::ComboBox::from_label("Select season!")
                         .selected_text(display)
                         .show_ui(ui, |ui| {
                             for i in 1..=details.number_of_seasons {
-                                ui.selectable_value(&mut self.selected_season, Some(i), format!("S{}", i));
+                                ui.selectable_value(&mut self.selection.season, Some(i), format!("S{}", i));
                             }
-                            ui.selectable_value(&mut self.selected_season, None, "None");
+                            ui.selectable_value(&mut self.selection.season, None, "None");
                         });
 
-                    let after_render_season = self.selected_season.unwrap_or(0);
+                    let after_render_season = self.selection.season.unwrap_or(0);
                     if before_render_season != after_render_season {
-                        self.selected_episode = None;
+                        self.selection.episode = None;
                     }
-                    if let Some(season_num) = self.selected_season {
+                    if let Some(season_num) = self.selection.season {
                         let season_num = season_num as usize;
-                        let display = if let Some(episode) = self.selected_episode {
+                        let display = if let Some(episode) = self.selection.episode {
                             format!("EP{}", episode)
                         } else {
                             "None".to_string()
@@ -561,9 +548,9 @@ impl MovieApp {
                             .selected_text(display)
                             .show_ui(ui, |ui| {
                                 for i in 1..=all_episodes {
-                                    ui.selectable_value(&mut self.selected_episode, Some(i), format!("EP{}", i));
+                                    ui.selectable_value(&mut self.selection.episode, Some(i), format!("EP{}", i));
                                 }
-                                ui.selectable_value(&mut self.selected_episode, None, "None");
+                                ui.selectable_value(&mut self.selection.episode, None, "None");
                             });
                     }
                 }
@@ -577,7 +564,7 @@ impl MovieApp {
             let user_movie;
             let user_series;
             if is_movie {
-                user_movie = self.user_movies.get_mut(self.selected_user_movie.unwrap()).unwrap();
+                user_movie = self.user_movies.get_mut(self.selection.index()).unwrap();
                 ui.horizontal(|ui| {
                     // Make this a custom button/slider thing where you click on stars to select rating?
                     // ⭐⭐⭐⭐⭐
@@ -594,7 +581,7 @@ impl MovieApp {
                     ui.text_edit_multiline(&mut user_movie.note);
                 });
             } else {
-                user_series = self.user_series.get_mut(self.selected_user_series.unwrap()).unwrap();
+                user_series = self.user_series.get_mut(self.selection.index()).unwrap();
                 ui.horizontal(|ui| {
                     // Make this a custom button/slider thing where you click on stars to select rating?
                     // ⭐⭐⭐⭐⭐
@@ -606,8 +593,8 @@ impl MovieApp {
                     ui.label("/ 10")
                 });
                 ui.add_space(8.0);
-                if let Some(episode_num) = self.selected_episode {
-                    let season_num = self.selected_season.unwrap();
+                if let Some(episode_num) = self.selection.episode {
+                    let season_num = self.selection.season();
                     let series_details = self.series_details.as_ref().unwrap();
                     // we shouldn't ensure length every frame but at the same time we shouldn't
                     // allocate all of it because series can be very big and we save space in json (read/write)
@@ -620,7 +607,7 @@ impl MovieApp {
                     });
                     return;
                 }
-                if let Some(season_num) = self.selected_season {
+                if let Some(season_num) = self.selection.season {
                     let series_details = self.series_details.as_ref().unwrap();
                     // we shouldn't ensure length every frame but at the same time we shouldn't
                     // allocate all of it because series can be very big and we save space in json (read/write)
@@ -927,5 +914,30 @@ impl MovieApp {
                 }
             }
         });
+    }
+}
+
+struct Selection {
+    //index into user movies / user series, depending on selected_entry
+    index: Option<usize>,
+    season: Option<u32>,  //cannot be 0
+    episode: Option<u32>  //cannot be 0
+}
+impl Selection {
+    pub fn new() -> Self{
+        Self{
+            index: None,
+            season: None,
+            episode: None
+        }
+    }
+    pub fn index(&self) -> usize {
+        self.index.expect("Selection index is None")
+    }
+    pub fn season(&self) -> u32 {
+        self.season.expect("Selection season is None")
+    }
+    pub fn episode(&self) -> u32 {
+        self.episode.expect("Selection episode is None")
     }
 }
