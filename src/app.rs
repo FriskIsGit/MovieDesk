@@ -306,6 +306,7 @@ impl MovieApp {
                                     for (i, series) in self.user_series.iter().enumerate() {
                                         if series.series.id == id {
                                             self.selected_user_series = Some(i);
+                                            self.selected_season = None;
                                             // TODO: Shouldn't be called here. There is no need to call this every
                                             //       time we click on any other series entries
                                             self.series_details_job = self.movie_db.get_series_details(id);
@@ -777,10 +778,8 @@ impl MovieApp {
         ui.add_space(5.0);
 
         if movie.overview.len() > 200 {
-            // NOTE: This is really bad! We should cache the output of the format to not call
-            //       it every single frame. We should also not take the slice here because we can
-            //       panic since strings are UTF-8 and this takes bytes.
-            //                                 vvvvvvvvvvvvvvvvvvvvvv
+            // NOTE: This is really bad!
+            // We should cache the output of the format to not call it every single frame.
             let slice = &movie.overview.as_bytes()[..200];
             let description = format!("{}...", String::from_utf8_lossy(slice).trim());
             ui.label(description);
@@ -872,10 +871,8 @@ impl MovieApp {
         ui.add_space(5.0);
 
         if series.overview.len() > 200 {
-            // NOTE: This is really bad! We should cache the output of the format to not call
-            //       it every single frame. We should also not take the slice here because we can
-            //       panic since strings are UTF-8 and this takes bytes.
-            //                                 vvvvvvvvvvvvvvvvvvvvvv
+            // NOTE: This is really bad!
+            // We should cache the output of the format to not call it every single frame.
             let slice = &series.overview.as_bytes()[..200];
             let description = format!("{}...", String::from_utf8_lossy(slice).trim());
             ui.label(description);
