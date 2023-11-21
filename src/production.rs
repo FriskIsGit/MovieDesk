@@ -181,6 +181,7 @@ user_prod.json
 */
 
 type ProductionId = u32;
+
 #[derive(Default, Copy, Clone)]
 pub enum EntryType {
     Movie(ProductionId),
@@ -192,9 +193,9 @@ pub enum EntryType {
 // NOTE: Central list could hold UserProduction instead that is displayed on top of the right panel maybe?
 #[derive(Clone)]
 pub struct ListEntry {
-    pub production_type: EntryType,
+    pub production_id: EntryType,
 
-    // NOTE: Those below could be referances to the item from the UserProduction?
+    // NOTE: Those below could be references to the item from the UserProduction?
     pub name: String,
     pub poster_path: Option<String>, // Shouldn't be an option, should always have a fallback image btw.
     pub rating: f32,
@@ -203,7 +204,7 @@ pub struct ListEntry {
 impl ListEntry {
     pub fn from_movie(movie: &Movie) -> Self {
         Self {
-            production_type: EntryType::Movie(movie.id),
+            production_id: EntryType::Movie(movie.id),
 
             name: movie.title.clone(),
             poster_path: movie.poster_path.clone(),
@@ -213,7 +214,7 @@ impl ListEntry {
 
     pub fn from_series(series: &Series) -> Self {
         Self {
-            production_type: EntryType::Series(series.id),
+            production_id: EntryType::Series(series.id),
 
             name: series.name.clone(),
             poster_path: series.poster_path.clone(),
@@ -224,13 +225,13 @@ impl ListEntry {
     pub fn is_selected(&self, entry: &EntryType) -> bool {
         match entry {
             EntryType::Movie(selected_id) => {
-                let EntryType::Movie(list_entry_id) = &self.production_type else {
+                let EntryType::Movie(list_entry_id) = &self.production_id else {
                     return false;
                 };
                 selected_id == list_entry_id
             }
             EntryType::Series(selected_id) => {
-                let EntryType::Series(list_entry_id) = &self.production_type else {
+                let EntryType::Series(list_entry_id) = &self.production_id else {
                     return false;
                 };
                 selected_id == list_entry_id
@@ -241,7 +242,7 @@ impl ListEntry {
 }
 
 pub enum CentralListOrdering {
-    // This will require to store the list separatly
+    // This will require to store the list separately
     UserDefined,
     Alphabetic,
     RatingAscending,

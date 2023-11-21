@@ -37,7 +37,7 @@ pub struct MovieApp {
     // This list holds entries in custom order of the user. Used as a reference for sorting and searching. 
     // It is "mostly" immutable
     central_user_list: Vec<ListEntry>,
-    // This list is highly mutable. It will be used for appropriate sorting (when a corresponding ordering 
+    // This list is highly mutable. It will be user for appropriate sorting (when a corresponding ordering 
     // buttons are clicked), shrinking and expanding (when used inputs name of the production in a central panel 
     // search bar). This is the list that is used for central panel drawing.
     central_draw_list: Vec<ListEntry>,
@@ -116,6 +116,9 @@ impl MovieApp {
 
     fn central_list_reload(&mut self) {
         self.central_user_list.clear();
+
+        // This is not that great. When loading data, custom list order created by the user gets disregarded.
+        // Maybe the order of the list should also be saved somehow?
 
         for series in &self.user_series {
             let entry = ListEntry::from_series(&series.series);
@@ -290,7 +293,7 @@ impl MovieApp {
                             self.selected_user_movie = None;
                             self.selected_user_series = None;
 
-                            match entry.production_type {
+                            match entry.production_id {
                                 EntryType::Movie(id) => {
                                     for (i, movie) in self.user_movies.iter().enumerate() {
                                         if movie.movie.id == id {
@@ -313,7 +316,7 @@ impl MovieApp {
                                 EntryType::None => unreachable!(),
                             }
 
-                            self.selected_entry = entry.production_type;
+                            self.selected_entry = entry.production_id;
                         }
 
                         selected = !selected;
