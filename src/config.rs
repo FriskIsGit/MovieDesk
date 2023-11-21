@@ -7,6 +7,8 @@ pub struct Config {
     pub api_key: String,
     pub include_adult: bool,
     pub enable_cache: bool,
+    pub load_on_startup: bool,
+    pub save_on_exit: bool,
     pub browser_name: String,
 }
 

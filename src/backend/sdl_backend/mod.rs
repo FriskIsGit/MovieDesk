@@ -470,6 +470,7 @@ pub fn run_app() {
             break;
         }
     }
-
-    movie_app.save_data();
+    if movie_app.config.save_on_exit {
+        movie_app.save_data();
+    }
 }

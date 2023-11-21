@@ -10,7 +10,9 @@ impl eframe::App for MovieApp {
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
-        self.save_data();
+        if self.config.save_on_exit {
+            self.save_data();
+        }
     }
 }
 

@@ -58,7 +58,7 @@ pub struct MovieApp {
     image_limiter: RateLimiter,
     // Not a part of the layout
     movie_db: TheMovieDB,
-    config: Config,
+    pub config: Config,
 }
 
 impl MovieApp {
@@ -215,13 +215,8 @@ impl MovieApp {
         // Tell egui to use these fonts:
         // ctx.set_fonts(fonts);
 
-        let outcome = production::deserialize_user_productions(None);
-        match outcome {
-            Ok(user_prods) => {
-                self.user_series = user_prods.0;
-                self.user_movies = user_prods.1;
-            }
-            Err(msg) => eprintln!("{}", msg),
+        if self.config.load_on_startup {
+            self.load_data();
         }
 
         self.central_list_reload();

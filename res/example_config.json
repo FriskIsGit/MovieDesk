@@ -2,5 +2,7 @@
   "api_key": "eyJhbGciOiJIUzI1NiJ9",
   "include_adult": false,
   "enable_cache": true,
+  "load_on_startup": true,
+  "save_on_exit": true,
   "browser_name": "firefox"
 }
