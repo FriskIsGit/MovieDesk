@@ -44,7 +44,7 @@ pub struct MovieApp {
     central_ordering: CentralListOrdering,
 
     // TODO: Add searchbar and fuzzy searching logic at some point.
-    // searched_string: String,
+    searched_string: String,
 
     // Notes
     series_details_job: Job<SeriesDetails>,
@@ -103,6 +103,7 @@ impl MovieApp {
             central_user_list: Vec::new(),
             central_draw_list: Vec::new(),
             central_ordering: CentralListOrdering::UserDefined,
+            searched_string: String::new(),
 
             series_view: SeriesView::new(),
             movie_view: MovieView::new(),
@@ -147,6 +148,8 @@ impl MovieApp {
 
     fn central_draw_list_update(&mut self) {
         self.central_draw_list.clear();
+        // NOTE: I suppose cloning the entries themself is not needed here. Could be improved by storing references,
+        //       but of course, this requires a little more work and is more annoying to deal with.
         self.central_draw_list = self.central_user_list.clone();
 
         match self.central_ordering {
@@ -159,7 +162,17 @@ impl MovieApp {
                 self.central_draw_list.sort_by(|a, b| b.rating.partial_cmp(&a.rating).unwrap()),
         }
 
-        // TODO: Apply searchbar query here.
+        // NOTE: Definitely needs some improvements, but will do for now.
+        //       Also, fuzzy searching would be really nice!
+        let matches = self.central_draw_list.iter().filter(|entry|  {
+            let searched_lower = self.searched_string.to_lowercase();
+            entry.name.to_lowercase().contains(&searched_lower)
+        });
+        let mut new_draw_list = Vec::new();
+        for entry in matches {
+            new_draw_list.push(entry.clone());
+        }
+        self.central_draw_list = new_draw_list;
     }
 
     pub fn setup(&mut self) {
@@ -273,6 +286,13 @@ impl MovieApp {
                 });
 
             });
+
+            ui.vertical_centered_justified(|ui| {
+                if ui.text_edit_singleline(&mut self.searched_string).changed() {
+                    self.central_draw_list_update();
+                }
+            });
+
             ui.separator();
 
             // NOTE: This is an outline of a new list view. Kind of messy and still needs some work.

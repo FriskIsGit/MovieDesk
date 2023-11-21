@@ -255,4 +255,5 @@ pub enum CentralListOrdering {
     // UnwatchedFirst,
     // Favourites,
     // WatchTime,
+    // Popularity,
 }
