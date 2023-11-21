@@ -307,6 +307,7 @@ impl MovieApp {
                                         if series.series.id == id {
                                             self.selected_user_series = Some(i);
                                             self.selected_season = None;
+                                            self.selected_episode = None;
                                             // TODO: Shouldn't be called here. There is no need to call this every
                                             //       time we click on any other series entries
                                             self.series_details_job = self.movie_db.get_series_details(id);
