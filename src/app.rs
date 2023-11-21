@@ -781,7 +781,8 @@ impl MovieApp {
             //       it every single frame. We should also not take the slice here because we can
             //       panic since strings are UTF-8 and this takes bytes.
             //                                 vvvvvvvvvvvvvvvvvvvvvv
-            let description = format!("{}...", &movie.overview[..200].trim());
+            let slice = &movie.overview.as_bytes()[..200];
+            let description = format!("{}...", String::from_utf8_lossy(slice).trim());
             ui.label(description);
         } else {
             ui.label(&movie.overview);
@@ -875,7 +876,8 @@ impl MovieApp {
             //       it every single frame. We should also not take the slice here because we can
             //       panic since strings are UTF-8 and this takes bytes.
             //                                 vvvvvvvvvvvvvvvvvvvvvv
-            let description = format!("{}...", &series.overview[..200]);
+            let slice = &series.overview.as_bytes()[..200];
+            let description = format!("{}...", String::from_utf8_lossy(slice).trim());
             ui.label(description);
         } else {
             ui.label(&series.overview);
