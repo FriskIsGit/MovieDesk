@@ -470,4 +470,6 @@ pub fn run_app() {
             break;
         }
     }
+
+    movie_app.save_data();
 }

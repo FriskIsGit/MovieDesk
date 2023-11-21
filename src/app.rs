@@ -167,6 +167,26 @@ impl MovieApp {
         self.central_draw_list = new_draw_list;
     }
 
+    pub fn save_data(&self) {
+        let outcome = production::serialize_user_productions(&self.user_series, &self.user_movies);
+        if outcome.is_err() {
+            eprintln!("{}", outcome.unwrap_err())
+        }
+    }
+
+    pub fn load_data(&mut self) {
+        let outcome = production::deserialize_user_productions(None);
+        match outcome {
+            Ok(user_prods) => {
+                self.user_series = user_prods.0;
+                self.user_movies = user_prods.1;
+            }
+            Err(msg) => eprintln!("{}", msg),
+        }
+
+        self.central_list_reload();
+    }
+
     pub fn setup(&mut self) {
         // Start with the default fonts (we will be adding to them rather than replacing them).
         let mut fonts = egui::FontDefinitions::default();
@@ -194,6 +214,17 @@ impl MovieApp {
 
         // Tell egui to use these fonts:
         // ctx.set_fonts(fonts);
+
+        let outcome = production::deserialize_user_productions(None);
+        match outcome {
+            Ok(user_prods) => {
+                self.user_series = user_prods.0;
+                self.user_movies = user_prods.1;
+            }
+            Err(msg) => eprintln!("{}", msg),
+        }
+
+        self.central_list_reload();
     }
 
     pub fn render(&mut self, ctx: &egui::Context) {
@@ -636,24 +667,13 @@ impl MovieApp {
                 ui.menu_button("File", |ui| {
                     // display success/failure message somewhere once finished below?
                     if ui.button("Save data").clicked() {
-                        let outcome = production::serialize_user_productions(&self.user_series, &self.user_movies);
-                        if outcome.is_err() {
-                            eprintln!("{}", outcome.unwrap_err())
-                        }
+                        self.save_data();
                     }
 
                     if ui.button("Load data").clicked() {
-                        let outcome = production::deserialize_user_productions(None);
-                        match outcome {
-                            Ok(user_prods) => {
-                                self.user_series = user_prods.0;
-                                self.user_movies = user_prods.1;
-                            }
-                            Err(msg) => eprintln!("{}", msg),
-                        }
-
-                        self.central_list_reload();
+                        self.load_data();
                     }
+
                     if ui.button("Load data from file").clicked() {}
                 });
 

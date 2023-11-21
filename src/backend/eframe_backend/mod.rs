@@ -8,6 +8,10 @@ impl eframe::App for MovieApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.render(ctx);
     }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.save_data();
+    }
 }
 
 pub fn run_app() {
