@@ -10,10 +10,11 @@ mod themoviedb;
 mod limiter;
 mod movie_details;
 
+pub const LICENSE: &str = include_str!("../LICENSE.md");
+
 // TODO: Convert no_image.png to .svg
 // TODO: Drag and drop to move items to the center panel?
 // TODO: Add exception handling to all requests that can fail to avoid crashing the app
-// TODO: Load data on startup, save data on exit.
 
 fn main() {
     #[cfg(feature = "sdl_backend")]
@@ -22,3 +23,5 @@ fn main() {
     #[cfg(feature = "eframe_backend")]
     backend::eframe_backend::run_app();
 }
+
+

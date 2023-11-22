@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<svg width="2000" height="3000" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+ <!-- Created with SVG-edit - https://github.com/SVG-Edit/svgedit-->
+ <g class="layer">
+  <title>Layer 1</title>
+  <text fill="#7f7f7f" font-family="Sans-serif" font-size="24" id="svg_3" stroke="#7f7f7f" stroke-width="0" style="--darkreader-inline-fill: #aea392; --darkreader-inline-stroke: #7c7468;" text-anchor="middle" transform="matrix(1 0 0 1 0 0) matrix(13.3911 0 0 14.286 -6758.23 -26070.7)" x="579.36" xml:space="preserve" y="1980.69">No image</text>
+  <text fill="#7f7f7f" font-family="Sans-serif" font-size="24" id="svg_4" stroke="#000000" stroke-width="0" style="--darkreader-inline-fill: #aea392; --darkreader-inline-stroke: #a29887;" text-anchor="middle" transform="matrix(1 0 0 1 0 0) matrix(12.2263 0 0 13.9799 -6792.31 -31961.5)" x="636.69" xml:space="preserve" y="2473.41">available</text>
+  <ellipse cx="785" cy="650" fill="none" fill-opacity="0" id="svg_12" rx="196.67" ry="196.67" stroke="#7f7f7f" stroke-width="21" style="--darkreader-inline-stroke: #aea392;" transform="matrix(1 0 0 1 0 0)"/>
+  <line fill="none" id="svg_18" stroke="#000000" stroke-width="20" style="--darkreader-inline-stroke: #a29887;" transform="matrix(1 0 0 1 0 0)" x1="308.33" x2="701.67" y1="1396.67" y2="1110"/>
+  <line fill="none" id="svg_19" stroke="#000000" stroke-width="20" style="--darkreader-inline-stroke: #a29887;" transform="matrix(1 0 0 1 0 0)" x1="691.67" x2="901.67" y1="1106.67" y2="1410"/>
+  <line fill="none" id="svg_20" stroke="#000000" stroke-width="20" style="--darkreader-inline-stroke: #a29887;" transform="matrix(1 0 0 1 0 0)" x1="891.67" x2="1291.67" y1="1410" y2="866.67"/>
+  <line fill="none" id="svg_21" stroke="#000000" stroke-width="20" style="--darkreader-inline-stroke: #a29887;" x1="1281.67" x2="1678.33" y1="866.67" y2="1403.33"/>
+  <rect fill="#000000" fill-opacity="0" height="1283.33" id="svg_6" stroke="#7f7f7f" stroke-width="20" style="--darkreader-inline-fill: #23211f; --darkreader-inline-stroke: #aea392;" width="1373.33" x="305" y="316.67">available</rect>
+ </g>
+</svg>

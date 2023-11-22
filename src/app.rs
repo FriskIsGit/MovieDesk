@@ -13,7 +13,7 @@ use std::time::Duration;
 use crate::limiter::RateLimiter;
 use crate::production;
 use egui::ahash::HashSet;
-use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Visuals};
+use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Visuals, ScrollArea, include_image};
 
 pub struct MovieApp {
     // Left panel
@@ -306,7 +306,12 @@ impl MovieApp {
             });
 
             ui.vertical_centered_justified(|ui| {
-                if ui.text_edit_singleline(&mut self.searched_string).changed() {
+                let search_field = egui::TextEdit::singleline(&mut self.searched_string)
+                    .min_size(Vec2::new(20.0, 0.0))
+                    .hint_text("Find your movie / series");
+
+                let response = ui.add(search_field);
+                if response.changed() {
                     self.central_draw_list_update();
                 }
             });
@@ -373,14 +378,21 @@ impl MovieApp {
                             ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
                         }
 
-                        if let Some(ref path) = entry.poster_path {
-                            let image_pos = rect.min + egui::vec2(3.0, 3.0);
-                            let desired_size = egui::vec2(20.0, 28.0);
+                        let image_pos = rect.min + egui::vec2(3.0, 3.0);
+                        let desired_size = egui::vec2(20.0, 28.0);
 
-                            let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
+                        let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
+
+                        let image = if let Some(ref path) = entry.poster_path {
                             let image_url = TheMovieDB::get_full_poster_url(path, Width::W300);
-                            egui::Image::new(image_url).paint_at(ui, image_rect);
-                        }
+                            egui::Image::new(image_url)
+                        } else {
+                            let image_source = include_image!("../res/no_image.png");
+                            // let image_source = include_image!("../res/image_unavailable.svg");
+                            egui::Image::new(image_source)
+                        };
+
+                        image.paint_at(ui, image_rect);
 
                         let font_pos = rect.min + Vec2::new(32.0, rect.height() / 2.0);
                         let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
@@ -717,7 +729,13 @@ impl MovieApp {
                 });
 
                 ui.menu_button("About", |_| {});
-                ui.menu_button("License", |_| {});
+                ui.menu_button("License", |ui| {
+                    // This is very goofy
+                    egui::ScrollArea::both().show(ui, |ui| {
+                        // ui.text_edit_multiline(&mut crate::LICENSE.to_string());
+                        ui.label(crate::LICENSE);
+                    });
+                });
             });
         });
     }
@@ -728,65 +746,68 @@ impl MovieApp {
         }
 
         ui.horizontal(|ui| {
-            if let Some(ref poster) = movie.poster_path {
+            let image = if let Some(poster) = &movie.poster_path {
                 let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
+                egui::Image::new(image_url)
+            } else {
+                egui::Image::new(include_image!("../res/no_image.png"))
+                // egui::Image::new(include_image!("../res/image_unavailable.svg"))
+            };
 
-                let image = egui::Image::new(image_url);
-                let poster = ui.add_sized([60.0, 100.0], image).interact(egui::Sense::click());
-                poster.context_menu(|ui| {
-                    if ui.button("Add movie").clicked() {
-                        // let mut user_productions = self.user_productions.borrow_mut();
-                        let exists = self
-                            .user_movies
-                            .iter()
-                            .any(|user_movie| user_movie.movie.id == movie.id);
+            let poster = ui.add_sized([60.0, 100.0], image).interact(egui::Sense::click());
+            poster.context_menu(|ui| {
+                if ui.button("Add movie").clicked() {
+                    // let mut user_productions = self.user_productions.borrow_mut();
+                    let exists = self
+                        .user_movies
+                        .iter()
+                        .any(|user_movie| user_movie.movie.id == movie.id);
 
-                        if !exists {
-                            let new_data = UserMovie {
-                                movie: movie.clone(),
-                                note: String::new(),
-                                user_rating: 0.0,
-                            };
-                            self.user_movies.push(new_data);
-                            self.central_list_add_movie(movie);
-                        }
-                        ui.close_menu()
+                    if !exists {
+                        let new_data = UserMovie {
+                            movie: movie.clone(),
+                            note: String::new(),
+                            user_rating: 0.0,
+                        };
+                        self.user_movies.push(new_data);
+                        self.central_list_add_movie(movie);
                     }
-                    //change name?: xpanded view, about, more, view seasons, view more, view details,
-                    if ui.button("More details").clicked() {
-                        self.movie_view.set_movie(movie.clone(), &self.movie_db);
-                        ui.close_menu();
-                    }
+                    ui.close_menu()
+                }
+                //change name?: xpanded view, about, more, view seasons, view more, view details,
+                if ui.button("More details").clicked() {
+                    self.movie_view.set_movie(movie.clone(), &self.movie_db);
+                    ui.close_menu();
+                }
 
-                    if ui.button("Open in TMDB").clicked() {
-                        let mut path = String::from(MOVIE_URL);
-                        path.push_str(movie.id.to_string().as_str());
-                        let browser = &self.config.browser_name;
-                        let _ = open::with_in_background(path, browser);
-                    }
+                if ui.button("Open in TMDB").clicked() {
+                    let mut path = String::from(MOVIE_URL);
+                    path.push_str(movie.id.to_string().as_str());
+                    let browser = &self.config.browser_name;
+                    let _ = open::with_in_background(path, browser);
+                }
 
-                    if ui.button("Open in IMDB").clicked() {
-                        let url = self.movie_db.get_imdb_url(Production::Movie(movie.to_owned()));
-                        let browser = &self.config.browser_name;
-                        let _ = open::with_in_background(url, browser);
-                    }
+                if ui.button("Open in IMDB").clicked() {
+                    let url = self.movie_db.get_imdb_url(Production::Movie(movie.to_owned()));
+                    let browser = &self.config.browser_name;
+                    let _ = open::with_in_background(url, browser);
+                }
 
-                    if ui.button("Fetch trailers").clicked() {
-                        let trailers = self.movie_db.get_movie_trailers(movie.id);
-                        self.trailers_view.set_content(movie.title.to_owned(), trailers);
-                    }
+                if ui.button("Fetch trailers").clicked() {
+                    let trailers = self.movie_db.get_movie_trailers(movie.id);
+                    self.trailers_view.set_content(movie.title.to_owned(), trailers);
+                }
 
-                    if ui.button("Download poster").clicked() && movie.poster_path.is_some() {
-                        let poster = movie.poster_path.as_ref().unwrap();
-                        let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
-                        self.movie_db.download_poster(&resource, &poster[1..]);
-                    }
+                if ui.button("Download poster").clicked() && movie.poster_path.is_some() {
+                    let poster = movie.poster_path.as_ref().unwrap();
+                    let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
+                    self.movie_db.download_poster(&resource, &poster[1..]);
+                }
 
-                    if ui.button("Close menu").clicked() {
-                        ui.close_menu();
-                    }
-                });
-            }
+                if ui.button("Close menu").clicked() {
+                    ui.close_menu();
+                }
+            });
 
             ui.vertical(|ui| {
                 ui.add_space(10.0);
@@ -819,67 +840,69 @@ impl MovieApp {
         }
 
         ui.horizontal(|ui| {
-            if let Some(poster) = &series.poster_path {
+            let image = if let Some(poster) = &series.poster_path {
                 let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
+                egui::Image::new(image_url)
+            } else {
+                egui::Image::new(include_image!("../res/no_image.png"))
+                // egui::Image::new(include_image!("../res/image_unavailable.svg"))
+            };
 
-                let image = egui::Image::new(image_url);
-                let poster = ui.add_sized([60.0, 100.0], image).interact(egui::Sense::click());
+            let poster = ui.add_sized([60.0, 100.0], image).interact(egui::Sense::click());
+            poster.context_menu(|ui| {
+                if ui.button("Add series").clicked() {
+                    // let mut user_productions = self.user_productions.borrow_mut();
+                    let exists = self
+                        .user_series
+                        .iter()
+                        .any(|user_series| user_series.series.id == series.id);
 
-                poster.context_menu(|ui| {
-                    if ui.button("Add series").clicked() {
-                        // let mut user_productions = self.user_productions.borrow_mut();
-                        let exists = self
-                            .user_series
-                            .iter()
-                            .any(|user_series| user_series.series.id == series.id);
-
-                        if !exists {
-                            let new_data = UserSeries {
-                                series: series.clone(),
-                                note: String::new(),
-                                user_rating: 0.0,
-                                season_notes: Vec::new(),
-                            };
-                            self.user_series.push(new_data);
-                            self.central_list_add_series(series);
-                        }
-                        ui.close_menu()
+                    if !exists {
+                        let new_data = UserSeries {
+                            series: series.clone(),
+                            note: String::new(),
+                            user_rating: 0.0,
+                            season_notes: Vec::new(),
+                        };
+                        self.user_series.push(new_data);
+                        self.central_list_add_series(series);
                     }
+                    ui.close_menu()
+                }
 
-                    if ui.button("More series details").clicked() {
-                        self.series_view.set_series(series.clone(), &self.movie_db);
-                        ui.close_menu();
-                    }
+                if ui.button("More series details").clicked() {
+                    self.series_view.set_series(series.clone(), &self.movie_db);
+                    ui.close_menu();
+                }
 
-                    if ui.button("Open in TMDB").clicked() {
-                        let mut path = String::from(TV_URL);
-                        path.push_str(series.id.to_string().as_str());
-                        let browser = &self.config.browser_name;
-                        let _ = open::with_in_background(path, browser);
-                    }
+                if ui.button("Open in TMDB").clicked() {
+                    let mut path = String::from(TV_URL);
+                    path.push_str(series.id.to_string().as_str());
+                    let browser = &self.config.browser_name;
+                    let _ = open::with_in_background(path, browser);
+                }
 
-                    if ui.button("Open in IMDB").clicked() {
-                        let url = self.movie_db.get_imdb_url(Production::Series(series.to_owned()));
-                        let browser = &self.config.browser_name;
-                        let _ = open::with_in_background(url, browser);
-                    }
+                if ui.button("Open in IMDB").clicked() {
+                    let url = self.movie_db.get_imdb_url(Production::Series(series.to_owned()));
+                    let browser = &self.config.browser_name;
+                    let _ = open::with_in_background(url, browser);
+                }
 
-                    if ui.button("Fetch trailers").clicked() {
-                        let trailers = self.movie_db.get_series_trailers(series.id);
-                        self.trailers_view.set_content(series.name.to_owned(), trailers);
-                    }
+                if ui.button("Fetch trailers").clicked() {
+                    let trailers = self.movie_db.get_series_trailers(series.id);
+                    self.trailers_view.set_content(series.name.to_owned(), trailers);
+                }
 
-                    if ui.button("Download poster").clicked() && series.poster_path.is_some() {
-                        let poster = series.poster_path.clone().unwrap().to_owned();
-                        let resource = TheMovieDB::get_full_poster_url(&poster, Width::ORIGINAL);
-                        self.movie_db.download_poster(&resource, &poster[1..]);
-                    }
+                if ui.button("Download poster").clicked() && series.poster_path.is_some() {
+                    let poster = series.poster_path.clone().unwrap().to_owned();
+                    let resource = TheMovieDB::get_full_poster_url(&poster, Width::ORIGINAL);
+                    self.movie_db.download_poster(&resource, &poster[1..]);
+                }
 
-                    if ui.button("Close menu").clicked() {
-                        ui.close_menu();
-                    }
-                });
-            }
+                if ui.button("Close menu").clicked() {
+                    ui.close_menu();
+                }
+            });
 
             ui.vertical(|ui| {
                 ui.add_space(10.0);
