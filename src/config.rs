@@ -16,7 +16,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            api_key: "<Replace this with yout TMDB api key>".to_string(),
+            api_key: "<Replace this with your TMDB api key>".to_string(),
             include_adult: false,
             enable_cache: false,
             load_on_startup: true,
