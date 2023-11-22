@@ -1,5 +1,5 @@
 use crate::jobs::Job;
-use crate::production::{Production, ProductionIds, Trailer};
+use crate::production::{Keyword, Production, ProductionIds, Trailer};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use egui::TextBuffer;
 use serde_json::Value;
@@ -169,19 +169,8 @@ impl TheMovieDB {
         })
     }
 
-    pub fn get_imdb_url(&self, production: Production) -> String {
-        let prod_name;
-        let url = match production {
-            Production::Movie(movie) => {
-                prod_name = movie.title.to_owned();
-                format!("{MOVIE_DETAILS_URL}/{}/external_ids", movie.id)
-            }
-            Production::Series(series) => {
-                prod_name = series.name.to_owned();
-                format!("{SERIES_DETAILS_URL}/{}/external_ids", series.id)
-            }
-        };
-        let request = self.new_authorized_get(&url);
+    fn get_imdb_url(&self, endpoint_url: String, prod_name: &str) -> String {
+        let request = self.new_authorized_get(&endpoint_url);
         let Ok(response) = request.call() else {
             eprintln!("Error on sending request");
             return format!("{IMDB_FIND}{prod_name}");
@@ -193,6 +182,15 @@ impl TheMovieDB {
             Some(imdb_id) => format!("{IMDB_TITLE}{imdb_id}"),
             None => format!("{IMDB_FIND}{prod_name}"),
         }
+    }
+
+    pub fn get_imdb_url_movie(&self, title: &str, movie_id: u32) -> String {
+        let url = format!("{MOVIE_DETAILS_URL}/{movie_id}/external_ids");
+        self.get_imdb_url(url, title)
+    }
+    pub fn get_imdb_url_series(&self, name: &str, series_id: u32) -> String {
+        let url = format!("{MOVIE_DETAILS_URL}/{series_id}/external_ids");
+        self.get_imdb_url(url, name)
     }
 
     pub fn get_movie_trailers(&self, movie_id: u32) -> Vec<Trailer> {
@@ -220,6 +218,32 @@ impl TheMovieDB {
             }
         }
         trailers
+    }
+
+    fn get_keywords(&self, url: String, array_key: &str) -> Vec<Keyword> {
+        let request = self.new_authorized_get(&url);
+        let Ok(response) = request.call() else {
+            eprintln!("Error on sending request");
+            return Vec::new();
+        };
+
+        let mut json: Value = serde_json::from_reader(response.into_reader()).unwrap();
+        let mut keywords_arr = json[array_key].take();
+        let json_keywords = keywords_arr.as_array_mut().unwrap();
+        let mut keywords: Vec<Keyword> = Vec::with_capacity(json_keywords.len());
+        for keyword in json_keywords {
+            keywords.push(serde_json::from_value(keyword.take()).unwrap());
+        }
+        keywords
+    }
+
+    pub fn get_keywords_movie(&self, movie_id: u32) -> Vec<Keyword> {
+        let url = format!("{MOVIE_DETAILS_URL}/{movie_id}/keywords");
+        self.get_keywords(url, "keywords")
+    }
+    pub fn get_keywords_series(&self, series_id: u32) -> Vec<Keyword> {
+        let url = format!("{SERIES_DETAILS_URL}/{series_id}/keywords");
+        self.get_keywords(url, "results")
     }
 
     pub fn download_poster(&self, poster_url: &str, file_path: &str) {

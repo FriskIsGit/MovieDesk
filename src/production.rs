@@ -117,6 +117,12 @@ impl SeasonNotes {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Keyword {
+    id: usize,
+    name: String,
+}
+
 pub fn serialize_user_productions(user_series: &[UserSeries], user_movies: &[UserMovie]) -> Result<(), String> {
     let john = json!({
         "series": user_series,

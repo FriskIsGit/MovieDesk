@@ -31,6 +31,12 @@ pub struct TrailersView {
     trailers: Vec<Trailer>,
 }
 
+pub struct LicenseView {
+    pub is_open: bool,
+    title: String,
+    id: egui::Id,
+}
+
 impl SeriesView {
     pub fn new() -> Self {
         Self {
@@ -235,6 +241,33 @@ impl TrailersView {
                     ui.hyperlink(trailer.youtube_url());
                     ui.separator();
                 }
+            });
+        });
+    }
+}
+
+impl LicenseView {
+    pub fn new() -> Self {
+        let id = "gpl".into();
+        Self {
+            is_open: false,
+            title: "License".into(),
+            id,
+        }
+    }
+    pub fn draw(&mut self, ctx: &egui::Context) {
+        if !self.is_open {
+            return;
+        }
+
+        let window = egui::Window::new(&self.title)
+            .open(&mut self.is_open)
+            .id(self.id)
+            .resizable(true);
+
+        window.show(ctx, |ui| {
+            egui::ScrollArea::both().show(ui, |ui| {
+                ui.label(crate::LICENSE)
             });
         });
     }

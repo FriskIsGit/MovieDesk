@@ -3,7 +3,7 @@ use crate::jobs::Job;
 use crate::production::{EntryType, ListEntry, Movie, Production, Series, UserMovie, UserSeries, CentralListOrdering};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
-use crate::view::{MovieView, SeriesView, TrailersView};
+use crate::view::{LicenseView, MovieView, SeriesView, TrailersView};
 
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
@@ -13,7 +13,7 @@ use std::time::Duration;
 use crate::limiter::RateLimiter;
 use crate::production;
 use egui::ahash::HashSet;
-use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Visuals, ScrollArea, include_image};
+use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Visuals, ScrollArea, include_image, RichText};
 
 pub struct MovieApp {
     // Left panel
@@ -53,6 +53,7 @@ pub struct MovieApp {
     series_view: SeriesView,
     movie_view: MovieView,
     trailers_view: TrailersView,
+    license_view: LicenseView,
 
     // Rate limiter
     image_limiter: RateLimiter,
@@ -100,6 +101,7 @@ impl MovieApp {
             series_view: SeriesView::new(),
             movie_view: MovieView::new(),
             trailers_view: TrailersView::new(),
+            license_view: LicenseView::new(),
 
             image_limiter: RateLimiter::new(20, Duration::from_secs(1)),
             movie_db,
@@ -226,6 +228,7 @@ impl MovieApp {
         self.series_view.draw(ctx, &self.movie_db);
         self.movie_view.draw(ctx, &self.movie_db);
         self.trailers_view.draw(ctx);
+        self.license_view.draw(ctx);
 
         self.top_panel(ctx);
         self.left_panel(ctx);
@@ -730,11 +733,7 @@ impl MovieApp {
 
                 ui.menu_button("About", |_| {});
                 ui.menu_button("License", |ui| {
-                    // This is very goofy
-                    egui::ScrollArea::both().show(ui, |ui| {
-                        // ui.text_edit_multiline(&mut crate::LICENSE.to_string());
-                        ui.label(crate::LICENSE);
-                    });
+                    self.license_view.is_open = true;
                 });
             });
         });
@@ -788,9 +787,14 @@ impl MovieApp {
                 }
 
                 if ui.button("Open in IMDB").clicked() {
-                    let url = self.movie_db.get_imdb_url(Production::Movie(movie.to_owned()));
+                    let url = self.movie_db.get_imdb_url_movie(&movie.title, movie.id);
                     let browser = &self.config.browser_name;
                     let _ = open::with_in_background(url, browser);
+                }
+
+                if ui.button("Fetch keywords").clicked() {
+                    let keywords = self.movie_db.get_keywords_movie(movie.id);
+                    println!("{:?}", keywords)
                 }
 
                 if ui.button("Fetch trailers").clicked() {
@@ -883,7 +887,7 @@ impl MovieApp {
                 }
 
                 if ui.button("Open in IMDB").clicked() {
-                    let url = self.movie_db.get_imdb_url(Production::Series(series.to_owned()));
+                    let url = self.movie_db.get_imdb_url_series(&series.name, series.id);
                     let browser = &self.config.browser_name;
                     let _ = open::with_in_background(url, browser);
                 }
@@ -891,6 +895,11 @@ impl MovieApp {
                 if ui.button("Fetch trailers").clicked() {
                     let trailers = self.movie_db.get_series_trailers(series.id);
                     self.trailers_view.set_content(series.name.to_owned(), trailers);
+                }
+
+                if ui.button("Fetch keywords").clicked() {
+                    let keywords = self.movie_db.get_keywords_series(series.id);
+                    println!("{:?}", keywords)
                 }
 
                 if ui.button("Download poster").clicked() && series.poster_path.is_some() {
