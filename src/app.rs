@@ -281,6 +281,9 @@ impl MovieApp {
     }
 
     fn central_panel(&mut self, ctx: &egui::Context) {
+        // NOTE: 
+        //     We could also add option exclude or find productions by keyword.
+        //     Searching by both production title and keywords could also be interesting.
         let center = egui::CentralPanel::default();
         center.show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -325,52 +328,52 @@ impl MovieApp {
 
             // NOTE: This is an outline of a new list view. Kind of messy and still needs some work.
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                for entry in &self.central_draw_list {
+                for (i, entry) in self.central_draw_list.iter().enumerate() {
                     let desired_size = egui::vec2(ui.available_width(), 32.0);
                     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
 
-                    let mut selected = entry.is_selected(&self.selected_entry);
+                    if ui.is_rect_visible(rect) {
+                        let mut selected = entry.is_selected(&self.selected_entry);
 
-                    if response.clicked() {
-                        if selected {
-                            self.selected_entry = EntryType::None;
-                            self.selection.index = None;
-                        } else {
-                            match entry.production_id {
-                                EntryType::Movie(id) => {
-                                    for (i, movie) in self.user_movies.iter().enumerate() {
-                                        if movie.movie.id == id {
-                                            self.selection.index = Some(i);
+                        if response.clicked() {
+                            if selected {
+                                self.selected_entry = EntryType::None;
+                                self.selection.index = None;
+                            } else {
+                                match entry.production_id {
+                                    EntryType::Movie(id) => {
+                                        for (i, movie) in self.user_movies.iter().enumerate() {
+                                            if movie.movie.id == id {
+                                                self.selection.index = Some(i);
+                                            }
                                         }
                                     }
-                                }
 
-                                EntryType::Series(id) => {
-                                    for (i, series) in self.user_series.iter().enumerate() {
-                                        if series.series.id == id {
-                                            self.selection.index = Some(i);
-                                            self.selection.season = None;
-                                            self.selection.episode = None;
-                                            // TODO: Shouldn't be called here. There is no need to call this every
-                                            //       time we click on any other series entries
-                                            self.series_details_job = self.movie_db.get_series_details(id);
+                                    EntryType::Series(id) => {
+                                        for (i, series) in self.user_series.iter().enumerate() {
+                                            if series.series.id == id {
+                                                self.selection.index = Some(i);
+                                                self.selection.season = None;
+                                                self.selection.episode = None;
+                                                // TODO: Shouldn't be called here. There is no need to call this every
+                                                //       time we click on any other series entries
+                                                self.series_details_job = self.movie_db.get_series_details(id);
+                                            }
                                         }
                                     }
+
+                                    EntryType::None => unreachable!(),
                                 }
 
-                                EntryType::None => unreachable!(),
+                                self.selected_entry = entry.production_id;
                             }
 
-                            self.selected_entry = entry.production_id;
+                            selected = !selected;
                         }
 
-                        selected = !selected;
-                    }
+                        // Attach some meta-data to the response which can be used by screen readers:
+                        // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
 
-                    // Attach some meta-data to the response which can be used by screen readers:
-                    // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
-
-                    if ui.is_rect_visible(rect) {
                         let visuals = ui.style().interact(&response);
                         let visuals2 = ui.style().noninteractive();
 
@@ -385,7 +388,6 @@ impl MovieApp {
 
                         let image_pos = rect.min + egui::vec2(3.0, 3.0);
                         let desired_size = egui::vec2(20.0, 28.0);
-
                         let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
 
                         let image = if let Some(ref path) = entry.poster_path {
@@ -408,6 +410,61 @@ impl MovieApp {
                             font_id,
                             egui::Color32::GRAY,
                         );
+
+                        // https://github.com/emilk/egui/issues/1010
+                        // https://github.com/emilk/egui/pull/907
+                        let bin_pos = egui::pos2(rect.max.x, rect.min.y) - egui::vec2(30.0, -5.0);
+                        let desired_size = egui::vec2(rect.height() - 10.0, rect.height() - 10.0);
+                        let bin_rect = egui::Rect::from_min_size(bin_pos, desired_size);
+
+                        let bin_btn = ui.interact(bin_rect, egui::Id::new(format!("testing{i}")), egui::Sense::click());
+
+                        if response.hovered() || bin_btn.hovered() {
+                            ui.painter().rect(bin_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+
+                            let bin_icon_pos = bin_rect.min + Vec2::new(5.0, bin_rect.height() / 2.0);
+                            let bin_icon_id = egui::FontId::new(16.0, eframe::epaint::FontFamily::Proportional);
+                            ui.painter().text(
+                                bin_icon_pos,
+                                egui::Align2::LEFT_CENTER,
+                                "🗑",
+                                bin_icon_id,
+                                egui::Color32::BLACK,
+                            );
+
+
+                            if bin_btn.clicked() {
+                                self.selected_entry = EntryType::None;
+                                self.selection.index = None;
+
+                                match entry.production_id {
+                                    EntryType::Movie(id) => {
+                                        let mut found_idx = 0;
+                                        for (i, movie) in self.user_movies.iter().enumerate() {
+                                            if movie.movie.id == id {
+                                                found_idx = i;
+                                                break;
+                                            }
+                                        };
+                                        self.user_movies.remove(found_idx);
+                                    }
+                                    EntryType::Series(id) => {
+                                        let mut found_idx = 0;
+                                        for (i, series) in self.user_series.iter().enumerate() {
+                                            if series.series.id == id {
+                                                found_idx = i;
+                                                break;
+                                            }
+                                        };
+                                        self.user_series.remove(found_idx);
+                                    }
+                                    EntryType::None => unreachable!(),
+                                }
+
+                                self.central_list_reload();
+                                return;
+                            }
+                        }
 
                         // TODO: Add "move up", "move down" and "delete" button that show up
                         //       whenever the list entry has mouse hover
