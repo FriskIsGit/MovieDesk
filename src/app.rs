@@ -13,7 +13,8 @@ use std::time::Duration;
 use crate::limiter::RateLimiter;
 use crate::production;
 use egui::ahash::HashSet;
-use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Visuals, ScrollArea, include_image, RichText};
+use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Visuals, include_image};
+use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 pub struct MovieApp {
     // Left panel
@@ -50,6 +51,7 @@ pub struct MovieApp {
     season_details: Option<SeasonDetails>,
     selection: Selection,
 
+    toasts: Toasts,
     // View states
     series_view: SeriesView,
     movie_view: MovieView,
@@ -100,6 +102,9 @@ impl MovieApp {
             central_ordering: CentralListOrdering::UserDefined,
             searched_string: String::new(),
 
+            toasts: Toasts::new()
+                .anchor(egui::Align2::RIGHT_TOP, (1.0, 1.0))
+                .direction(egui::Direction::TopDown),
             series_view: SeriesView::new(),
             movie_view: MovieView::new(),
             trailers_view: TrailersView::new(),
@@ -171,11 +176,32 @@ impl MovieApp {
         self.central_draw_list = new_draw_list;
     }
 
-    pub fn save_data(&self) {
+    pub fn save_data(&mut self) {
         let outcome = production::serialize_user_productions(&self.user_series, &self.user_movies);
-        if outcome.is_err() {
-            eprintln!("{}", outcome.unwrap_err())
+        match outcome {
+            Ok(_) => {
+                self.toasts.add(Toast {
+                    text: "Saved productions".into(),
+                    kind: ToastKind::Success,
+                    options: ToastOptions::default()
+                        .duration_in_seconds(2.5)
+                        .show_progress(true)
+                        .show_icon(true)
+                });
+            }
+            Err(msg) => {
+                eprintln!("{}", msg);
+                self.toasts.add(Toast {
+                    text: msg.into(),
+                    kind: ToastKind::Error,
+                    options: ToastOptions::default()
+                        .duration_in_seconds(3.5)
+                        .show_progress(true)
+                        .show_icon(true)
+                });
+            }
         }
+
     }
 
     pub fn load_data(&mut self) {
@@ -184,8 +210,26 @@ impl MovieApp {
             Ok(user_prods) => {
                 self.user_series = user_prods.0;
                 self.user_movies = user_prods.1;
+                self.toasts.add(Toast {
+                    text: "Loaded productions".into(),
+                    kind: ToastKind::Success,
+                    options: ToastOptions::default()
+                        .duration_in_seconds(2.5)
+                        .show_progress(true)
+                        .show_icon(true)
+                });
             }
-            Err(msg) => eprintln!("{}", msg),
+            Err(msg) => {
+                eprintln!("{}", msg);
+                self.toasts.add(Toast {
+                    text: msg.into(),
+                    kind: ToastKind::Error,
+                    options: ToastOptions::default()
+                        .duration_in_seconds(3.5)
+                        .show_progress(true)
+                        .show_icon(true)
+                });
+            },
         }
 
         self.central_list_reload();
@@ -231,6 +275,9 @@ impl MovieApp {
         self.movie_view.draw(ctx, &self.movie_db);
         self.trailers_view.draw(ctx);
         self.license_view.draw(ctx);
+
+        // Show all toasts
+        self.toasts.show(ctx);
 
         self.top_panel(ctx);
         self.left_panel(ctx);

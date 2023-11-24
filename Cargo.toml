@@ -26,6 +26,7 @@ ureq = "2.8.0"
 
 # Opens URL in browser
 open = "5.0.0"
+egui-toast = "0.9.0"
 
 [features]
 default = [ "eframe_backend" ]
