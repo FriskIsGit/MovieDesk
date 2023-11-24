@@ -22,6 +22,7 @@ pub struct MovieApp {
 
     search_productions: Option<Rc<[Production]>>,
     search_cache: HashMap<String, Rc<[Production]>>,
+    description_cache: HashMap<u32, String>,
     rendered_ids: HashSet<u32>,
     fetch_productions_job: Job<(String, Vec<Production>)>,
 
@@ -80,6 +81,7 @@ impl MovieApp {
             show_adult_content: config.include_adult,
             search_productions: None,
             search_cache: HashMap::default(),
+            description_cache: HashMap::new(),
             rendered_ids: HashSet::default(),
             fetch_productions_job: Job::Empty,
 
@@ -826,11 +828,16 @@ impl MovieApp {
         ui.add_space(5.0);
 
         if movie.overview.len() > 200 {
-            // NOTE: This is really bad!
-            // We should cache the output of the format to not call it every single frame.
-            let slice = &movie.overview.as_bytes()[..200];
-            let description = format!("{}...", String::from_utf8_lossy(slice).trim());
-            ui.label(description);
+            // NOTE: It's not that bad now!
+            if self.description_cache.contains_key(&movie.id) {
+                let description = self.description_cache.get(&movie.id).expect("Not cached");
+                ui.label(description);
+            } else {
+                let slice = &movie.overview.as_bytes()[..200];
+                let description = format!("{}...", String::from_utf8_lossy(slice).trim());
+                ui.label(&description);
+                self.description_cache.insert(movie.id, description);
+            }
         } else {
             ui.label(&movie.overview);
         };
@@ -926,11 +933,16 @@ impl MovieApp {
         ui.add_space(5.0);
 
         if series.overview.len() > 200 {
-            // NOTE: This is really bad!
-            // We should cache the output of the format to not call it every single frame.
-            let slice = &series.overview.as_bytes()[..200];
-            let description = format!("{}...", String::from_utf8_lossy(slice).trim());
-            ui.label(description);
+            // NOTE: It's not that bad now!
+            if self.description_cache.contains_key(&(series.id + 1)) {
+                let description = self.description_cache.get(&(series.id + 1)).expect("Not cached");
+                ui.label(description);
+            } else {
+                let slice = &series.overview.as_bytes()[..200];
+                let description = format!("{}...", String::from_utf8_lossy(slice).trim());
+                ui.label(&description);
+                self.description_cache.insert(series.id + 1, description);
+            }
         } else {
             ui.label(&series.overview);
         };
@@ -977,6 +989,11 @@ impl Selection {
             season: None,
             episode: None
         }
+    }
+    pub fn unselect_all(&mut self) {
+        self.index = None;
+        self.season = None;
+        self.episode = None;
     }
     pub fn index(&self) -> usize {
         self.index.expect("Selection index is None")
