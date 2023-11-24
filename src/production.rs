@@ -96,6 +96,8 @@ impl UserSeries {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SeasonNotes {
     pub note: String,
+    #[serde(default)]
+    pub user_rating: f32,
     pub episode_notes: Vec<String>,
 }
 
@@ -103,6 +105,7 @@ impl SeasonNotes {
     pub fn new() -> Self {
         Self {
             note: "".into(),
+            user_rating: 0.0,
             episode_notes: Vec::new(),
         }
     }
