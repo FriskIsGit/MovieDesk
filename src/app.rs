@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::jobs::Job;
-use crate::production::{EntryType, ListEntry, Movie, Production, Series, UserMovie, UserSeries, CentralListOrdering};
+use crate::production::{CentralListOrdering, EntryType, ListEntry, Movie, Production, Series, UserMovie, UserSeries};
 use crate::series_details::{SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{LicenseView, MovieView, SeriesView, TrailersView};
@@ -29,11 +29,11 @@ pub struct MovieApp {
 
     // Central panel
     selected_entry: EntryType,
-    // This list holds entries in custom order of the user. Used as a reference for sorting and searching. 
+    // This list holds entries in custom order of the user. Used as a reference for sorting and searching.
     // It is "mostly" immutable
     central_user_list: Vec<ListEntry>,
-    // This list is highly mutable. It will be user for appropriate sorting (when a corresponding ordering 
-    // buttons are clicked), shrinking and expanding (when used inputs name of the production in a central panel 
+    // This list is highly mutable. It will be user for appropriate sorting (when a corresponding ordering
+    // buttons are clicked), shrinking and expanding (when used inputs name of the production in a central panel
     // search bar). This is the list that is used for central panel drawing.
     central_draw_list: Vec<ListEntry>,
     central_ordering: CentralListOrdering,
@@ -154,18 +154,19 @@ impl MovieApp {
         self.central_draw_list = self.central_user_list.clone();
 
         match self.central_ordering {
-            CentralListOrdering::UserDefined => {},
-            CentralListOrdering::Alphabetic => 
-                self.central_draw_list.sort_by(|a, b| a.name.cmp(&b.name)),
-            CentralListOrdering::RatingAscending => 
-                self.central_draw_list.sort_by(|a, b| a.rating.partial_cmp(&b.rating).unwrap()),
-            CentralListOrdering::RatingDescending => 
-                self.central_draw_list.sort_by(|a, b| b.rating.partial_cmp(&a.rating).unwrap()),
+            CentralListOrdering::UserDefined => {}
+            CentralListOrdering::Alphabetic => self.central_draw_list.sort_by(|a, b| a.name.cmp(&b.name)),
+            CentralListOrdering::RatingAscending => self
+                .central_draw_list
+                .sort_by(|a, b| a.rating.partial_cmp(&b.rating).unwrap()),
+            CentralListOrdering::RatingDescending => self
+                .central_draw_list
+                .sort_by(|a, b| b.rating.partial_cmp(&a.rating).unwrap()),
         }
 
         // NOTE: Definitely needs some improvements, but will do for now.
         //       Also, fuzzy searching would be really nice!
-        let matches = self.central_draw_list.iter().filter(|entry|  {
+        let matches = self.central_draw_list.iter().filter(|entry| {
             let searched_lower = self.searched_string.to_lowercase();
             entry.name.to_lowercase().contains(&searched_lower)
         });
@@ -328,7 +329,7 @@ impl MovieApp {
     }
 
     fn central_panel(&mut self, ctx: &egui::Context) {
-        // NOTE: 
+        // NOTE:
         //     We could also add option exclude or find productions by keyword.
         //     Searching by both production title and keywords could also be interesting.
         let center = egui::CentralPanel::default();
@@ -357,10 +358,10 @@ impl MovieApp {
                         self.central_draw_list_update();
                     }
                 });
-
             });
 
             ui.vertical_centered_justified(|ui| {
+                // Maybe you could switch between "Search by tags" and "Search title"?
                 let search_field = egui::TextEdit::singleline(&mut self.searched_string)
                     .min_size(Vec2::new(20.0, 0.0))
                     .hint_text("Find your movie / series");
@@ -375,7 +376,7 @@ impl MovieApp {
 
             // NOTE: This is an outline of a new list view. Kind of messy and still needs some work.
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                for (i, entry) in self.central_draw_list.iter().enumerate() {
+                for entry in &self.central_draw_list {
                     let desired_size = egui::vec2(ui.available_width(), 32.0);
                     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
 
@@ -418,20 +419,42 @@ impl MovieApp {
                             selected = !selected;
                         }
 
+                        // OLD
                         // Attach some meta-data to the response which can be used by screen readers:
                         // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
+                        //
+                        // let visuals = ui.style().interact(&response);
+                        // let visuals2 = ui.style().noninteractive();
+                        //
+                        // // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
+                        // let rect = rect.expand(visuals.expansion);
+                        //
+                        // if selected {
+                        //     ui.painter().rect(rect, 1.0, visuals.bg_fill, visuals.bg_stroke);
+                        // } else {
+                        //     ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
+                        // }
 
-                        let visuals = ui.style().interact(&response);
-                        let visuals2 = ui.style().noninteractive();
+                        let hovered = if let Some(pos) = ctx.pointer_latest_pos() {
+                            response.rect.contains(pos)
+                        } else {
+                            false
+                        };
+
+                        let stroke = if hovered {
+                            egui::Stroke::new(1.0, egui::Color32::from_gray(150))
+                        } else {
+                            egui::Stroke::NONE
+                        };
+
+                        let background = if selected {
+                            egui::Color32::from_gray(55)
+                        } else {
+                            egui::Color32::TRANSPARENT
+                        };
 
                         // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
-                        let rect = rect.expand(visuals.expansion);
-
-                        if selected {
-                            ui.painter().rect(rect, 1.0, visuals.bg_fill, visuals.bg_stroke);
-                        } else {
-                            ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
-                        }
+                        ui.painter().rect(rect, 1.0, background, stroke);
 
                         let image_pos = rect.min + egui::vec2(3.0, 3.0);
                         let desired_size = egui::vec2(20.0, 28.0);
@@ -458,27 +481,35 @@ impl MovieApp {
                             egui::Color32::GRAY,
                         );
 
-                        // https://github.com/emilk/egui/issues/1010
-                        // https://github.com/emilk/egui/pull/907
-                        let bin_pos = egui::pos2(rect.max.x, rect.min.y) - egui::vec2(30.0, -5.0);
-                        let desired_size = egui::vec2(rect.height() - 10.0, rect.height() - 10.0);
-                        let bin_rect = egui::Rect::from_min_size(bin_pos, desired_size);
+                        // if response.hovered() || bin_btn.hovered() {
+                        if hovered {
+                            let bin_pos = egui::pos2(rect.max.x, rect.min.y) - egui::vec2(30.0, -5.0);
+                            let desired_size = egui::vec2(rect.height() - 10.0, rect.height() - 10.0);
+                            let bin_rect = egui::Rect::from_min_size(bin_pos, desired_size);
 
-                        let bin_btn = ui.interact(bin_rect, egui::Id::new(format!("testing{i}")), egui::Sense::click());
+                            let bin_btn =
+                                ui.interact(bin_rect, egui::Id::new("central_entry_bin_btn"), egui::Sense::click());
 
-                        if response.hovered() || bin_btn.hovered() {
-                            ui.painter().rect(bin_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                            if bin_btn.is_pointer_button_down_on() {
+                                ui.painter().rect(bin_rect, 6.0, egui::Color32::RED, egui::Stroke::NONE);
+                            } else if bin_btn.hovered() {
+                                ui.painter()
+                                    .rect(bin_rect, 6.0, egui::Color32::LIGHT_RED, egui::Stroke::NONE);
+                            } else {
+                                ui.painter()
+                                    .rect(bin_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                            }
 
-                            let bin_icon_pos = bin_rect.min + Vec2::new(5.0, bin_rect.height() / 2.0);
-                            let bin_icon_id = egui::FontId::new(16.0, eframe::epaint::FontFamily::Proportional);
+                            let bin_icon_pos = bin_rect.min + Vec2::new(bin_rect.width() / 2.0 + 1.0, bin_rect.height() / 2.0 + 1.0);
+                            let bin_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+
                             ui.painter().text(
                                 bin_icon_pos,
-                                egui::Align2::LEFT_CENTER,
+                                egui::Align2::CENTER_CENTER,
                                 "🗑",
                                 bin_icon_id,
                                 egui::Color32::BLACK,
                             );
-
 
                             if bin_btn.clicked() {
                                 self.selected_entry = EntryType::None;
@@ -492,7 +523,7 @@ impl MovieApp {
                                                 found_idx = i;
                                                 break;
                                             }
-                                        };
+                                        }
                                         self.user_movies.remove(found_idx);
                                     }
                                     EntryType::Series(id) => {
@@ -502,7 +533,7 @@ impl MovieApp {
                                                 found_idx = i;
                                                 break;
                                             }
-                                        };
+                                        }
                                         self.user_series.remove(found_idx);
                                     }
                                     EntryType::None => unreachable!(),
@@ -515,7 +546,7 @@ impl MovieApp {
 
                         // TODO: Add "move up", "move down" and "delete" button that show up
                         //       whenever the list entry has mouse hover
-                        //       
+                        //
                         // TODO: List entries could also be draggable?
                     }
                 }
@@ -1084,14 +1115,14 @@ struct Selection {
     //index into user movies / user series, depending on selected_entry
     index: Option<usize>,
     season: Option<u32>,  //cannot be 0
-    episode: Option<u32>  //cannot be 0
+    episode: Option<u32>, //cannot be 0
 }
 impl Selection {
-    pub fn new() -> Self{
-        Self{
+    pub fn new() -> Self {
+        Self {
             index: None,
             season: None,
-            episode: None
+            episode: None,
         }
     }
     pub fn unselect_all(&mut self) {
