@@ -177,6 +177,41 @@ impl MovieApp {
         self.central_draw_list = new_draw_list;
     }
 
+    fn central_list_handle_selection(&mut self, entry_id: EntryType, is_selected: bool) {
+        if is_selected {
+            self.selected_entry = EntryType::None;
+            self.selection.index = None;
+        } else {
+            match entry_id {
+                EntryType::Movie(id) => {
+                    for (i, movie) in self.user_movies.iter().enumerate() {
+                        if movie.movie.id == id {
+                            self.selection.index = Some(i);
+                        }
+                    }
+                }
+
+                EntryType::Series(id) => {
+                    for (i, series) in self.user_series.iter().enumerate() {
+                        if series.series.id == id {
+                            self.selection.index = Some(i);
+                            self.selection.season = None;
+                            self.selection.episode = None;
+                            // TODO: Shouldn't be called here. There is no need to call this every
+                            //       time we click on any other series entries
+                            self.series_details_job = self.movie_db.get_series_details(id);
+                        }
+                    }
+                }
+
+                EntryType::None => unreachable!(),
+            }
+
+            self.selected_entry = entry_id;
+        }
+    }
+
+    // TODO: Improve this
     fn central_list_remove_entry(&mut self, entry_id: EntryType) {
         self.selected_entry = EntryType::None;
         self.selection.index = None;
@@ -413,7 +448,15 @@ impl MovieApp {
 
     // TODO: List entries could also be draggable?
     fn render_central_panel_entries(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        for entry in &self.central_draw_list {
+        for i in 0..self.central_draw_list.len() {
+            // HACK: Workaround for egui junkiness.
+            //     We are using indexes because early returning after clicking the "delete" button causes 
+            //     the scrollbar to flicker. This ensures then we never go out of bounds after removing an 
+            //     item from central_draw_list and hence changing its length.
+            if i >= self.central_draw_list.len() {
+                break;
+            }
+
             let entry_size = egui::vec2(ui.available_width(), 32.0);
             let (entry_rect, entry_response) = ui.allocate_exact_size(entry_size, egui::Sense::click());
 
@@ -421,41 +464,11 @@ impl MovieApp {
                 continue
             }
 
-            let mut entry_selected = entry.is_selected(&self.selected_entry);
+            let mut entry_selected = self.central_draw_list[i].is_selected(&self.selected_entry);
 
             if entry_response.clicked() {
-                if entry_selected {
-                    self.selected_entry = EntryType::None;
-                    self.selection.index = None;
-                } else {
-                    match entry.production_id {
-                        EntryType::Movie(id) => {
-                            for (i, movie) in self.user_movies.iter().enumerate() {
-                                if movie.movie.id == id {
-                                    self.selection.index = Some(i);
-                                }
-                            }
-                        }
-
-                        EntryType::Series(id) => {
-                            for (i, series) in self.user_series.iter().enumerate() {
-                                if series.series.id == id {
-                                    self.selection.index = Some(i);
-                                    self.selection.season = None;
-                                    self.selection.episode = None;
-                                    // TODO: Shouldn't be called here. There is no need to call this every
-                                    //       time we click on any other series entries
-                                    self.series_details_job = self.movie_db.get_series_details(id);
-                                }
-                            }
-                        }
-
-                        EntryType::None => unreachable!(),
-                    }
-
-                    self.selected_entry = entry.production_id;
-                }
-
+                let entry_id = self.central_draw_list[i].production_id;
+                self.central_list_handle_selection(entry_id, entry_selected);
                 entry_selected = !entry_selected;
             }
 
@@ -484,7 +497,7 @@ impl MovieApp {
             let poster_size = egui::vec2(20.0, 28.0);
             let poster_rect = egui::Rect::from_min_size(poster_pos, poster_size);
 
-            let poster = if let Some(ref path) = entry.poster_path {
+            let poster = if let Some(ref path) = self.central_draw_list[i].poster_path {
                 let image_url = TheMovieDB::get_full_poster_url(path, Width::W300);
                 egui::Image::new(image_url)
             } else {
@@ -498,12 +511,10 @@ impl MovieApp {
             let title_font_pos = entry_rect.min + Vec2::new(32.0, entry_rect.height() / 2.0);
             let title_font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
             ui.painter().text(
-                title_font_pos, egui::Align2::LEFT_CENTER, &entry.name, title_font_id, egui::Color32::GRAY,
+                title_font_pos, egui::Align2::LEFT_CENTER, &self.central_draw_list[i].name, title_font_id, egui::Color32::GRAY,
             );
 
             if entry_hovered {
-                // TODO: Add "move up" and "move down" buttons.
-                
                 // Maybe this logic could be extracted or maybe a custom widget could be created instead?
                 
                 // Drawing and handling the "delete entry" button.
@@ -531,10 +542,9 @@ impl MovieApp {
                 );
 
                 if bin_button.clicked() {
-                    self.central_list_remove_entry(entry.production_id);
-                    return;
+                    self.central_list_remove_entry(self.central_draw_list[i].production_id);
+                    // break;
                 }
-
 
                 // Drawing and handling the "move down" button.
                 let down_button_pos = egui::pos2(entry_rect.max.x, entry_rect.min.y) - egui::vec2(58.0, -5.0);
@@ -561,7 +571,8 @@ impl MovieApp {
                 );
 
                 if down_button.clicked() {
-                    println!("TODO");
+                    // TODO: Add bound checking + entries from central_user_list should be swapped insted of this.
+                    self.central_draw_list.swap(i, i + 1);
                 }
 
 
@@ -590,45 +601,11 @@ impl MovieApp {
                 );
 
                 if up_button.clicked() {
-                    println!("TODO");
+                    // TODO: Add bound checking + entries from central_user_list should be swapped insted of this.
+                    self.central_draw_list.swap(i, i - 1);
                 }
             }
         }
-
-        //
-        // NOTE: This shouldn't be needed here anyways. All posters should be cached from the moment when
-        //       user adds a new production to the list.
-        //
-        // if movie.poster_path.is_some() {
-        //     let image_url =
-        //         TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
-        //
-        //     if self.rendered_ids.contains(&movie.id) {
-        //         ui.image(image_url);
-        //     } else if self.image_limiter.hit() {
-        //         self.rendered_ids.insert(movie.id);
-        //         ui.image(image_url);
-        //     } else {
-        //         ui.spinner();
-        //     }
-        //
-        //     ui.heading(&movie.title);
-        // }
-        //
-        // if series.poster_path.is_some() {
-        //     let image_url =
-        //         TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
-        //
-        //     if self.rendered_ids.contains(&series.id) {
-        //         ui.image(image_url);
-        //     } else if self.image_limiter.hit() {
-        //         self.rendered_ids.insert(series.id);
-        //         ui.image(image_url);
-        //     } else {
-        //         ui.spinner();
-        //     }
-        //     ui.heading(&series.name);
-        // }
     }
 
     fn right_panel(&mut self, ctx: &egui::Context) {
