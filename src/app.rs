@@ -13,7 +13,7 @@ use std::time::Duration;
 use crate::limiter::RateLimiter;
 use crate::production;
 use egui::ahash::HashSet;
-use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Visuals, include_image};
+use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Pos2, Visuals, include_image};
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 pub struct MovieApp {
@@ -419,7 +419,7 @@ impl MovieApp {
                         self.central_draw_list_update();
                     }
 
-                    if ui.button("v").on_hover_text("Desceding rating ordering").clicked() {
+                    if ui.button("v").on_hover_text("Descending rating ordering").clicked() {
                         self.central_ordering = CentralListOrdering::RatingDescending;
                         self.central_draw_list_update();
                     }
@@ -457,7 +457,7 @@ impl MovieApp {
                 break;
             }
 
-            let entry_size = egui::vec2(ui.available_width(), 32.0);
+            let entry_size = Vec2::new(ui.available_width(), 32.0);
             let (entry_rect, entry_response) = ui.allocate_exact_size(entry_size, egui::Sense::click());
 
             if !ui.is_rect_visible(entry_rect) {
@@ -493,9 +493,9 @@ impl MovieApp {
             // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
             ui.painter().rect(entry_rect, 1.0, entry_background, entry_stroke);
 
-            let poster_pos = entry_rect.min + egui::vec2(3.0, 3.0);
-            let poster_size = egui::vec2(20.0, 28.0);
-            let poster_rect = egui::Rect::from_min_size(poster_pos, poster_size);
+            let poster_pos = entry_rect.min + Vec2::new(3.0, 3.0);
+            let poster_size = Vec2::new(20.0, 28.0);
+            let poster_rect = Rect::from_min_size(poster_pos, poster_size);
 
             let poster = if let Some(ref path) = self.central_draw_list[i].poster_path {
                 let image_url = TheMovieDB::get_full_poster_url(path, Width::W300);
@@ -518,9 +518,9 @@ impl MovieApp {
                 // Maybe this logic could be extracted or maybe a custom widget could be created instead?
                 
                 // Drawing and handling the "delete entry" button.
-                let bin_button_pos = egui::pos2(entry_rect.max.x, entry_rect.min.y) - egui::vec2(30.0, -5.0);
-                let bin_button_size = egui::vec2(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
-                let bin_button_rect = egui::Rect::from_min_size(bin_button_pos, bin_button_size);
+                let bin_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(30.0, -5.0);
+                let bin_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let bin_button_rect = Rect::from_min_size(bin_button_pos, bin_button_size);
 
                 let bin_button = ui.interact(bin_button_rect, egui::Id::new("central_entry_bin_btn"), egui::Sense::click());
 
@@ -547,9 +547,9 @@ impl MovieApp {
                 }
 
                 // Drawing and handling the "move down" button.
-                let down_button_pos = egui::pos2(entry_rect.max.x, entry_rect.min.y) - egui::vec2(58.0, -5.0);
-                let down_button_size = egui::vec2(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
-                let down_button_rect = egui::Rect::from_min_size(down_button_pos, down_button_size);
+                let down_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(58.0, -5.0);
+                let down_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let down_button_rect = Rect::from_min_size(down_button_pos, down_button_size);
 
                 let down_button = ui.interact(down_button_rect, egui::Id::new("central_entry_down_btn"), egui::Sense::click());
 
@@ -571,15 +571,15 @@ impl MovieApp {
                 );
 
                 if down_button.clicked() {
-                    // TODO: Add bound checking + entries from central_user_list should be swapped insted of this.
+                    // TODO: Add bound checking + entries from central_user_list should be swapped instead of this.
                     self.central_draw_list.swap(i, i + 1);
                 }
 
 
                 // Drawing and handling the "move up" button.
-                let up_button_pos = egui::pos2(entry_rect.max.x, entry_rect.min.y) - egui::vec2(86.0, -5.0);
-                let up_button_size = egui::vec2(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
-                let up_button_rect = egui::Rect::from_min_size(up_button_pos, up_button_size);
+                let up_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(86.0, -5.0);
+                let up_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let up_button_rect = Rect::from_min_size(up_button_pos, up_button_size);
 
                 let up_button = ui.interact(up_button_rect, egui::Id::new("central_entry_up_btn"), egui::Sense::click());
 
@@ -601,7 +601,7 @@ impl MovieApp {
                 );
 
                 if up_button.clicked() {
-                    // TODO: Add bound checking + entries from central_user_list should be swapped insted of this.
+                    // TODO: Add bound checking + entries from central_user_list should be swapped instead of this.
                     self.central_draw_list.swap(i, i - 1);
                 }
             }
