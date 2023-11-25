@@ -177,6 +177,37 @@ impl MovieApp {
         self.central_draw_list = new_draw_list;
     }
 
+    fn central_list_remove_entry(&mut self, entry_id: EntryType) {
+        self.selected_entry = EntryType::None;
+        self.selection.index = None;
+
+        match entry_id {
+            EntryType::Movie(id) => {
+                let mut found_idx = 0;
+                for (i, movie) in self.user_movies.iter().enumerate() {
+                    if movie.movie.id == id {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                self.user_movies.remove(found_idx);
+            }
+            EntryType::Series(id) => {
+                let mut found_idx = 0;
+                for (i, series) in self.user_series.iter().enumerate() {
+                    if series.series.id == id {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                self.user_series.remove(found_idx);
+            }
+            EntryType::None => unreachable!(),
+        }
+
+        self.central_list_reload();
+    }
+
     pub fn save_data(&mut self) {
         let outcome = production::serialize_user_productions(&self.user_series, &self.user_movies);
         match outcome {
@@ -374,257 +405,230 @@ impl MovieApp {
 
             ui.separator();
 
-            // NOTE: This is an outline of a new list view. Kind of messy and still needs some work.
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                for entry in &self.central_draw_list {
-                    let desired_size = egui::vec2(ui.available_width(), 32.0);
-                    let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
-
-                    if ui.is_rect_visible(rect) {
-                        let mut selected = entry.is_selected(&self.selected_entry);
-
-                        if response.clicked() {
-                            if selected {
-                                self.selected_entry = EntryType::None;
-                                self.selection.index = None;
-                            } else {
-                                match entry.production_id {
-                                    EntryType::Movie(id) => {
-                                        for (i, movie) in self.user_movies.iter().enumerate() {
-                                            if movie.movie.id == id {
-                                                self.selection.index = Some(i);
-                                            }
-                                        }
-                                    }
-
-                                    EntryType::Series(id) => {
-                                        for (i, series) in self.user_series.iter().enumerate() {
-                                            if series.series.id == id {
-                                                self.selection.index = Some(i);
-                                                self.selection.season = None;
-                                                self.selection.episode = None;
-                                                // TODO: Shouldn't be called here. There is no need to call this every
-                                                //       time we click on any other series entries
-                                                self.series_details_job = self.movie_db.get_series_details(id);
-                                            }
-                                        }
-                                    }
-
-                                    EntryType::None => unreachable!(),
-                                }
-
-                                self.selected_entry = entry.production_id;
-                            }
-
-                            selected = !selected;
-                        }
-
-                        // OLD
-                        // Attach some meta-data to the response which can be used by screen readers:
-                        // response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, "Something"));
-                        //
-                        // let visuals = ui.style().interact(&response);
-                        // let visuals2 = ui.style().noninteractive();
-                        //
-                        // // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
-                        // let rect = rect.expand(visuals.expansion);
-                        //
-                        // if selected {
-                        //     ui.painter().rect(rect, 1.0, visuals.bg_fill, visuals.bg_stroke);
-                        // } else {
-                        //     ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
-                        // }
-
-                        let hovered = if let Some(pos) = ctx.pointer_latest_pos() {
-                            response.rect.contains(pos)
-                        } else {
-                            false
-                        };
-
-                        let stroke = if hovered {
-                            egui::Stroke::new(1.0, egui::Color32::from_gray(150))
-                        } else {
-                            egui::Stroke::NONE
-                        };
-
-                        let background = if selected {
-                            egui::Color32::from_gray(55)
-                        } else {
-                            egui::Color32::TRANSPARENT
-                        };
-
-                        // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
-                        ui.painter().rect(rect, 1.0, background, stroke);
-
-                        let image_pos = rect.min + egui::vec2(3.0, 3.0);
-                        let desired_size = egui::vec2(20.0, 28.0);
-                        let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
-
-                        let image = if let Some(ref path) = entry.poster_path {
-                            let image_url = TheMovieDB::get_full_poster_url(path, Width::W300);
-                            egui::Image::new(image_url)
-                        } else {
-                            let image_source = include_image!("../res/no_image.png");
-                            // let image_source = include_image!("../res/image_unavailable.svg");
-                            egui::Image::new(image_source)
-                        };
-
-                        image.paint_at(ui, image_rect);
-
-                        let font_pos = rect.min + Vec2::new(32.0, rect.height() / 2.0);
-                        let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
-                        ui.painter().text(
-                            font_pos,
-                            egui::Align2::LEFT_CENTER,
-                            &entry.name,
-                            font_id,
-                            egui::Color32::GRAY,
-                        );
-
-                        // if response.hovered() || bin_btn.hovered() {
-                        if hovered {
-                            let bin_pos = egui::pos2(rect.max.x, rect.min.y) - egui::vec2(30.0, -5.0);
-                            let desired_size = egui::vec2(rect.height() - 10.0, rect.height() - 10.0);
-                            let bin_rect = egui::Rect::from_min_size(bin_pos, desired_size);
-
-                            let bin_btn =
-                                ui.interact(bin_rect, egui::Id::new("central_entry_bin_btn"), egui::Sense::click());
-
-                            if bin_btn.is_pointer_button_down_on() {
-                                ui.painter().rect(bin_rect, 6.0, egui::Color32::RED, egui::Stroke::NONE);
-                            } else if bin_btn.hovered() {
-                                ui.painter()
-                                    .rect(bin_rect, 6.0, egui::Color32::LIGHT_RED, egui::Stroke::NONE);
-                            } else {
-                                ui.painter()
-                                    .rect(bin_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
-                            }
-
-                            let bin_icon_pos = bin_rect.min + Vec2::new(bin_rect.width() / 2.0 + 1.0, bin_rect.height() / 2.0 + 1.0);
-                            let bin_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
-
-                            ui.painter().text(
-                                bin_icon_pos,
-                                egui::Align2::CENTER_CENTER,
-                                "🗑",
-                                bin_icon_id,
-                                egui::Color32::BLACK,
-                            );
-
-                            if bin_btn.clicked() {
-                                self.selected_entry = EntryType::None;
-                                self.selection.index = None;
-
-                                match entry.production_id {
-                                    EntryType::Movie(id) => {
-                                        let mut found_idx = 0;
-                                        for (i, movie) in self.user_movies.iter().enumerate() {
-                                            if movie.movie.id == id {
-                                                found_idx = i;
-                                                break;
-                                            }
-                                        }
-                                        self.user_movies.remove(found_idx);
-                                    }
-                                    EntryType::Series(id) => {
-                                        let mut found_idx = 0;
-                                        for (i, series) in self.user_series.iter().enumerate() {
-                                            if series.series.id == id {
-                                                found_idx = i;
-                                                break;
-                                            }
-                                        }
-                                        self.user_series.remove(found_idx);
-                                    }
-                                    EntryType::None => unreachable!(),
-                                }
-
-                                self.central_list_reload();
-                                return;
-                            }
-                        }
-
-                        // TODO: Add "move up", "move down" and "delete" button that show up
-                        //       whenever the list entry has mouse hover
-                        //
-                        // TODO: List entries could also be draggable?
-                    }
-                }
-
-                //
-                // NOTE: This shouldn't be needed here anyways. All posters should be cached from the moment when
-                //       user adds a new production to the list.
-                //
-                // if movie.poster_path.is_some() {
-                //     let image_url =
-                //         TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
-                //
-                //     if self.rendered_ids.contains(&movie.id) {
-                //         ui.image(image_url);
-                //     } else if self.image_limiter.hit() {
-                //         self.rendered_ids.insert(movie.id);
-                //         ui.image(image_url);
-                //     } else {
-                //         ui.spinner();
-                //     }
-                //
-                //     ui.heading(&movie.title);
-                // }
-                //
-                // if series.poster_path.is_some() {
-                //     let image_url =
-                //         TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
-                //
-                //     if self.rendered_ids.contains(&series.id) {
-                //         ui.image(image_url);
-                //     } else if self.image_limiter.hit() {
-                //         self.rendered_ids.insert(series.id);
-                //         ui.image(image_url);
-                //     } else {
-                //         ui.spinner();
-                //     }
-                //     ui.heading(&series.name);
-                // }
+                self.render_central_panel_entries(ctx, ui);
             });
         });
     }
 
-    fn paint_entry(
-        &self,
-        ui: &mut Ui,
-        selected: bool,
-        name: &str,
-        poster_path: &Option<String>,
-        rect: &Rect,
-        response: &Response,
-    ) {
-        if ui.is_rect_visible(*rect) {
-            let visuals = ui.style().interact(&response);
-            let visuals2 = ui.style().noninteractive();
+    // TODO: List entries could also be draggable?
+    fn render_central_panel_entries(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        for entry in &self.central_draw_list {
+            let entry_size = egui::vec2(ui.available_width(), 32.0);
+            let (entry_rect, entry_response) = ui.allocate_exact_size(entry_size, egui::Sense::click());
+
+            if !ui.is_rect_visible(entry_rect) {
+                continue
+            }
+
+            let mut entry_selected = entry.is_selected(&self.selected_entry);
+
+            if entry_response.clicked() {
+                if entry_selected {
+                    self.selected_entry = EntryType::None;
+                    self.selection.index = None;
+                } else {
+                    match entry.production_id {
+                        EntryType::Movie(id) => {
+                            for (i, movie) in self.user_movies.iter().enumerate() {
+                                if movie.movie.id == id {
+                                    self.selection.index = Some(i);
+                                }
+                            }
+                        }
+
+                        EntryType::Series(id) => {
+                            for (i, series) in self.user_series.iter().enumerate() {
+                                if series.series.id == id {
+                                    self.selection.index = Some(i);
+                                    self.selection.season = None;
+                                    self.selection.episode = None;
+                                    // TODO: Shouldn't be called here. There is no need to call this every
+                                    //       time we click on any other series entries
+                                    self.series_details_job = self.movie_db.get_series_details(id);
+                                }
+                            }
+                        }
+
+                        EntryType::None => unreachable!(),
+                    }
+
+                    self.selected_entry = entry.production_id;
+                }
+
+                entry_selected = !entry_selected;
+            }
+
+            let entry_hovered = if let Some(pos) = ctx.pointer_latest_pos() {
+                entry_response.rect.contains(pos)
+            } else {
+                false
+            };
+
+            let entry_stroke = if entry_hovered {
+                egui::Stroke::new(1.0, egui::Color32::from_gray(150))
+            } else {
+                egui::Stroke::NONE
+            };
+
+            let entry_background = if entry_selected {
+                egui::Color32::from_gray(55)
+            } else {
+                egui::Color32::TRANSPARENT
+            };
 
             // All coordinates are in absolute screen coordinates so we use `rect` to place the elements.
-            let rect = rect.expand(visuals.expansion);
+            ui.painter().rect(entry_rect, 1.0, entry_background, entry_stroke);
 
-            if selected {
-                ui.painter().rect(rect, 1.0, visuals.bg_fill, visuals.bg_stroke);
-            } else {
-                ui.painter().rect(rect, 1.0, visuals2.weak_bg_fill, visuals.bg_stroke);
-            }
+            let poster_pos = entry_rect.min + egui::vec2(3.0, 3.0);
+            let poster_size = egui::vec2(20.0, 28.0);
+            let poster_rect = egui::Rect::from_min_size(poster_pos, poster_size);
 
-            let pos = rect.min + Vec2::new(32.0, rect.height() / 2.0);
-            let font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
-            ui.painter()
-                .text(pos, egui::Align2::LEFT_CENTER, name, font_id, egui::Color32::GRAY);
-
-            if let Some(ref path) = poster_path {
-                let image_pos = rect.min + egui::vec2(3.0, 3.0);
-                let desired_size = egui::vec2(20.0, 28.0);
-
-                let image_rect = egui::Rect::from_min_size(image_pos, desired_size);
+            let poster = if let Some(ref path) = entry.poster_path {
                 let image_url = TheMovieDB::get_full_poster_url(path, Width::W300);
-                egui::Image::new(image_url).paint_at(ui, image_rect);
+                egui::Image::new(image_url)
+            } else {
+                let image_source = include_image!("../res/no_image.png");
+                // let image_source = include_image!("../res/image_unavailable.svg");
+                egui::Image::new(image_source)
+            };
+
+            poster.paint_at(ui, poster_rect);
+
+            let title_font_pos = entry_rect.min + Vec2::new(32.0, entry_rect.height() / 2.0);
+            let title_font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
+            ui.painter().text(
+                title_font_pos, egui::Align2::LEFT_CENTER, &entry.name, title_font_id, egui::Color32::GRAY,
+            );
+
+            if entry_hovered {
+                // TODO: Add "move up" and "move down" buttons.
+                
+                // Maybe this logic could be extracted or maybe a custom widget could be created instead?
+                
+                // Drawing and handling the "delete entry" button.
+                let bin_button_pos = egui::pos2(entry_rect.max.x, entry_rect.min.y) - egui::vec2(30.0, -5.0);
+                let bin_button_size = egui::vec2(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let bin_button_rect = egui::Rect::from_min_size(bin_button_pos, bin_button_size);
+
+                let bin_button = ui.interact(bin_button_rect, egui::Id::new("central_entry_bin_btn"), egui::Sense::click());
+
+                if bin_button.is_pointer_button_down_on() {
+                    let bin_rect = bin_button_rect.expand(1.0);
+                    ui.painter().rect(bin_rect, 6.0, egui::Color32::RED, egui::Stroke::NONE);
+                } else if bin_button.hovered() {
+                    let bin_rect = bin_button_rect.expand(1.0);
+                    ui.painter().rect(bin_rect, 6.0, egui::Color32::LIGHT_RED, egui::Stroke::NONE);
+                } else {
+                    ui.painter().rect(bin_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                }
+
+                let bin_icon_pos = bin_button_rect.min + Vec2::new(bin_button_rect.width() / 2.0 + 1.0, bin_button_rect.height() / 2.0 + 1.0);
+                let bin_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+
+                ui.painter().text(
+                    bin_icon_pos, egui::Align2::CENTER_CENTER, "🗑", bin_icon_id, egui::Color32::BLACK,
+                );
+
+                if bin_button.clicked() {
+                    self.central_list_remove_entry(entry.production_id);
+                    return;
+                }
+
+
+                // Drawing and handling the "move down" button.
+                let down_button_pos = egui::pos2(entry_rect.max.x, entry_rect.min.y) - egui::vec2(58.0, -5.0);
+                let down_button_size = egui::vec2(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let down_button_rect = egui::Rect::from_min_size(down_button_pos, down_button_size);
+
+                let down_button = ui.interact(down_button_rect, egui::Id::new("central_entry_down_btn"), egui::Sense::click());
+
+                if down_button.is_pointer_button_down_on() {
+                    let down_rect = down_button_rect.expand(1.0);
+                    ui.painter().rect(down_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
+                } else if down_button.hovered() {
+                    let down_rect = down_button_rect.expand(1.0);
+                    ui.painter().rect(down_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
+                } else {
+                    ui.painter().rect(down_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                }
+
+                let down_icon_pos = down_button_rect.min + Vec2::new(down_button_rect.width() / 2.0 + 1.0, down_button_rect.height() / 2.0 + 1.0);
+                let down_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+
+                ui.painter().text(
+                    down_icon_pos, egui::Align2::CENTER_CENTER, "v", down_icon_id, egui::Color32::BLACK,
+                );
+
+                if down_button.clicked() {
+                    println!("TODO");
+                }
+
+
+                // Drawing and handling the "move up" button.
+                let up_button_pos = egui::pos2(entry_rect.max.x, entry_rect.min.y) - egui::vec2(86.0, -5.0);
+                let up_button_size = egui::vec2(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let up_button_rect = egui::Rect::from_min_size(up_button_pos, up_button_size);
+
+                let up_button = ui.interact(up_button_rect, egui::Id::new("central_entry_up_btn"), egui::Sense::click());
+
+                if up_button.is_pointer_button_down_on() {
+                    let up_rect = up_button_rect.expand(1.0);
+                    ui.painter().rect(up_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
+                } else if up_button.hovered() {
+                    let up_rect = up_button_rect.expand(1.0);
+                    ui.painter().rect(up_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
+                } else {
+                    ui.painter().rect(up_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                }
+
+                let up_icon_pos = up_button_rect.min + Vec2::new(up_button_rect.width() / 2.0 + 1.0, up_button_rect.height() / 2.0 + 1.0);
+                let up_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+
+                ui.painter().text(
+                    up_icon_pos, egui::Align2::CENTER_CENTER, "^", up_icon_id, egui::Color32::BLACK,
+                );
+
+                if up_button.clicked() {
+                    println!("TODO");
+                }
             }
         }
+
+        //
+        // NOTE: This shouldn't be needed here anyways. All posters should be cached from the moment when
+        //       user adds a new production to the list.
+        //
+        // if movie.poster_path.is_some() {
+        //     let image_url =
+        //         TheMovieDB::get_full_poster_url(movie.poster_path.as_ref().unwrap(), Width::W300);
+        //
+        //     if self.rendered_ids.contains(&movie.id) {
+        //         ui.image(image_url);
+        //     } else if self.image_limiter.hit() {
+        //         self.rendered_ids.insert(movie.id);
+        //         ui.image(image_url);
+        //     } else {
+        //         ui.spinner();
+        //     }
+        //
+        //     ui.heading(&movie.title);
+        // }
+        //
+        // if series.poster_path.is_some() {
+        //     let image_url =
+        //         TheMovieDB::get_full_poster_url(series.poster_path.as_ref().unwrap(), Width::W300);
+        //
+        //     if self.rendered_ids.contains(&series.id) {
+        //         ui.image(image_url);
+        //     } else if self.image_limiter.hit() {
+        //         self.rendered_ids.insert(series.id);
+        //         ui.image(image_url);
+        //     } else {
+        //         ui.spinner();
+        //     }
+        //     ui.heading(&series.name);
+        // }
     }
 
     fn right_panel(&mut self, ctx: &egui::Context) {
@@ -803,6 +807,7 @@ impl MovieApp {
             }
         });
     }
+
 
     // Could be used for some toolbar logic at the top of the layout.
     // | File | View | Settings | Help | Info | ... etc.
