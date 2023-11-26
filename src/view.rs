@@ -1,12 +1,13 @@
 use crate::{
     jobs::Job,
-    production::{Movie, Series, Trailer},
-    series_details::{SeasonDetails, SeriesDetails},
+    production::Trailer,
+    movies::Movie,
+    series::{Series, SeasonDetails, SeriesDetails},
     themoviedb::{TheMovieDB, Width},
 };
 
 use egui::{include_image, ImageSource::Uri, Label, Sense, Id};
-use crate::movie_details::MovieDetails;
+use crate::movies::MovieDetails;
 
 pub struct SeriesView {
     window_open: bool,

@@ -5,10 +5,10 @@ mod config;
 mod credits;
 mod jobs;
 mod production;
-mod series_details;
 mod themoviedb;
 mod limiter;
-mod movie_details;
+mod movies;
+mod series;
 
 pub const LICENSE: &str = include_str!("../LICENSE.md");
 

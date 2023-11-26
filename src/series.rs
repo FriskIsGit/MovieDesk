@@ -1,6 +1,39 @@
 use std::fmt::Display;
-
 use serde::{Deserialize, Serialize};
+
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Series {
+    pub id: u32,
+    pub name: String,
+    pub original_language: String,
+    pub overview: String,
+    pub popularity: f32,
+    pub poster_path: Option<String>,
+    pub first_air_date: String,
+    pub vote_average: f32,
+    pub adult: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserSeries {
+    pub series: Series,
+    pub user_rating: f32,
+    pub note: String,
+    pub season_notes: Vec<SeasonNotes>,
+}
+
+impl UserSeries {
+    pub fn ensure_seasons(&mut self, len: usize) {
+        if self.season_notes.len() >= len {
+            return;
+        }
+        let fill = len - self.season_notes.len();
+        for _ in 0..fill {
+            self.season_notes.push(SeasonNotes::new());
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 //we need this struct in order to know how many seasons a series has (are unreleased seasons included?)
@@ -71,4 +104,30 @@ pub struct Episode {
     pub overview: String,
     pub runtime: Option<u32>,
     pub vote_average: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SeasonNotes {
+    pub note: String,
+    pub user_rating: f32,
+    pub episode_notes: Vec<String>,
+}
+
+impl SeasonNotes {
+    pub fn new() -> Self {
+        Self {
+            note: "".into(),
+            user_rating: 0.0,
+            episode_notes: Vec::new(),
+        }
+    }
+    pub fn ensure_episodes(&mut self, len: usize) {
+        if self.episode_notes.len() >= len {
+            return;
+        }
+        let fill = len - self.episode_notes.len();
+        for _ in 0..fill {
+            self.episode_notes.push("".into());
+        }
+    }
 }

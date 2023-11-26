@@ -1,7 +1,8 @@
 use crate::config::Config;
 use crate::jobs::Job;
-use crate::production::{CentralListOrdering, EntryType, ListEntry, Movie, Production, Series, UserMovie, UserSeries};
-use crate::series_details::{SeasonDetails, SeriesDetails};
+use crate::production::{CentralListOrdering, EntryType, ListEntry, Production};
+use crate::movies::{Movie, UserMovie};
+use crate::series::{Series, UserSeries, SeasonDetails, SeriesDetails};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{LicenseView, MovieView, SeriesView, TrailersView};
 

@@ -1,5 +1,19 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Movie {
+    pub id: u32,
+    pub title: String,
+    pub original_language: String,
+    pub overview: String,
+    pub popularity: f32,
+    pub poster_path: Option<String>,
+    pub release_date: String,
+    pub vote_average: f32,
+    pub vote_count: u32,
+    pub adult: bool,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MovieDetails {
     pub backdrop_path: Option<String>,
@@ -52,4 +66,11 @@ pub struct ProductionCompany {
     pub name: String,
     pub origin_country: String,
     pub logo_path: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserMovie {
+    pub movie: Movie,
+    pub user_rating: f32,
+    pub note: String,
 }

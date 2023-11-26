@@ -1,11 +1,11 @@
 use crate::jobs::Job;
 use crate::production::{Keyword, Production, ProductionIds, Trailer};
-use crate::series_details::{SeasonDetails, SeriesDetails};
+use crate::series::{SeasonDetails, SeriesDetails};
 use egui::TextBuffer;
 use serde_json::Value;
 use std::time::Duration;
 use ureq::{Agent, AgentBuilder};
-use crate::movie_details::MovieDetails;
+use crate::movies::MovieDetails;
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
 const SERIES_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
