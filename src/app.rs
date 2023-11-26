@@ -22,10 +22,10 @@ pub struct MovieApp {
     show_adult_content: bool,
 
     search_productions: Option<Rc<[Production]>>,
-    search_cache: HashMap<String, Rc<[Production]>>,
+    fetch_productions_job: Job<Vec<Production>>,
+
     description_cache: HashMap<u32, String>,
     rendered_ids: HashSet<u32>,
-    fetch_productions_job: Job<(String, Vec<Production>)>,
 
     // Central panel
     selected_entry: EntryType,
@@ -82,7 +82,6 @@ impl MovieApp {
             search: String::new(),
             show_adult_content: config.include_adult,
             search_productions: None,
-            search_cache: HashMap::default(),
             description_cache: HashMap::new(),
             rendered_ids: HashSet::default(),
             fetch_productions_job: Job::Empty,
@@ -374,13 +373,8 @@ impl MovieApp {
                 let pressed_enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
 
                 if response.lost_focus() && pressed_enter {
-                    match self.search_cache.get(&self.search).cloned() {
-                        None => {
-                            self.fetch_productions_job = self.movie_db.search_production(self.search.clone());
-                            search_triggered = true;
-                        }
-                        res @ Some(_) => self.search_productions = res,
-                    }
+                    self.fetch_productions_job = self.movie_db.search_production(self.search.clone());
+                    search_triggered = true;
                 }
             });
 
@@ -449,12 +443,12 @@ impl MovieApp {
     // TODO: List entries could also be draggable?
     fn render_central_panel_entries(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         for i in 0..self.central_draw_list.len() {
-            // HACK: Workaround for egui junkiness.
+            // HACK: Workaround for egui junky-ness.
             //     We are using indexes because early returning after clicking the "delete" button causes 
             //     the scrollbar to flicker. This ensures then we never go out of bounds after removing an 
             //     item from central_draw_list and hence changing its length.
             if i >= self.central_draw_list.len() {
-                break;
+                break
             }
 
             let entry_size = Vec2::new(ui.available_width(), 32.0);
@@ -514,96 +508,98 @@ impl MovieApp {
                 title_font_pos, egui::Align2::LEFT_CENTER, &self.central_draw_list[i].name, title_font_id, egui::Color32::GRAY,
             );
 
-            if entry_hovered {
-                // Maybe this logic could be extracted or maybe a custom widget could be created instead?
-                
-                // Drawing and handling the "delete entry" button.
-                let bin_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(30.0, -5.0);
-                let bin_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
-                let bin_button_rect = Rect::from_min_size(bin_button_pos, bin_button_size);
+            if !entry_hovered {
+                continue
+            }
 
-                let bin_button = ui.interact(bin_button_rect, egui::Id::new("central_entry_bin_btn"), egui::Sense::click());
+            // Maybe this logic could be extracted or maybe a custom widget could be created instead?
 
-                if bin_button.is_pointer_button_down_on() {
-                    let bin_rect = bin_button_rect.expand(1.0);
-                    ui.painter().rect(bin_rect, 6.0, egui::Color32::RED, egui::Stroke::NONE);
-                } else if bin_button.hovered() {
-                    let bin_rect = bin_button_rect.expand(1.0);
-                    ui.painter().rect(bin_rect, 6.0, egui::Color32::LIGHT_RED, egui::Stroke::NONE);
-                } else {
-                    ui.painter().rect(bin_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
-                }
+            // Drawing and handling the "delete entry" button.
+            let bin_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(30.0, -5.0);
+            let bin_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+            let bin_button_rect = Rect::from_min_size(bin_button_pos, bin_button_size);
 
-                let bin_icon_pos = bin_button_rect.min + Vec2::new(bin_button_rect.width() / 2.0 + 1.0, bin_button_rect.height() / 2.0 + 1.0);
-                let bin_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+            let bin_button = ui.interact(bin_button_rect, egui::Id::new("central_entry_bin_btn"), egui::Sense::click());
 
-                ui.painter().text(
-                    bin_icon_pos, egui::Align2::CENTER_CENTER, "🗑", bin_icon_id, egui::Color32::BLACK,
-                );
+            if bin_button.is_pointer_button_down_on() {
+                let bin_rect = bin_button_rect.expand(1.0);
+                ui.painter().rect(bin_rect, 6.0, egui::Color32::RED, egui::Stroke::NONE);
+            } else if bin_button.hovered() {
+                let bin_rect = bin_button_rect.expand(1.0);
+                ui.painter().rect(bin_rect, 6.0, egui::Color32::LIGHT_RED, egui::Stroke::NONE);
+            } else {
+                ui.painter().rect(bin_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+            }
 
-                if bin_button.clicked() {
-                    self.central_list_remove_entry(self.central_draw_list[i].production_id);
-                    // break;
-                }
+            let bin_icon_pos = bin_button_rect.min + Vec2::new(bin_button_rect.width() / 2.0 + 1.0, bin_button_rect.height() / 2.0 + 1.0);
+            let bin_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
 
-                // Drawing and handling the "move down" button.
-                let down_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(58.0, -5.0);
-                let down_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
-                let down_button_rect = Rect::from_min_size(down_button_pos, down_button_size);
+            ui.painter().text(
+                bin_icon_pos, egui::Align2::CENTER_CENTER, "🗑", bin_icon_id, egui::Color32::BLACK,
+            );
 
-                let down_button = ui.interact(down_button_rect, egui::Id::new("central_entry_down_btn"), egui::Sense::click());
+            if bin_button.clicked() {
+                self.central_list_remove_entry(self.central_draw_list[i].production_id);
+                // break;
+            }
 
-                if down_button.is_pointer_button_down_on() {
-                    let down_rect = down_button_rect.expand(1.0);
-                    ui.painter().rect(down_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
-                } else if down_button.hovered() {
-                    let down_rect = down_button_rect.expand(1.0);
-                    ui.painter().rect(down_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
-                } else {
-                    ui.painter().rect(down_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
-                }
+            // Drawing and handling the "move down" button.
+            let down_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(58.0, -5.0);
+            let down_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+            let down_button_rect = Rect::from_min_size(down_button_pos, down_button_size);
 
-                let down_icon_pos = down_button_rect.min + Vec2::new(down_button_rect.width() / 2.0 + 1.0, down_button_rect.height() / 2.0 + 1.0);
-                let down_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+            let down_button = ui.interact(down_button_rect, egui::Id::new("central_entry_down_btn"), egui::Sense::click());
 
-                ui.painter().text(
-                    down_icon_pos, egui::Align2::CENTER_CENTER, "v", down_icon_id, egui::Color32::BLACK,
-                );
+            if down_button.is_pointer_button_down_on() {
+                let down_rect = down_button_rect.expand(1.0);
+                ui.painter().rect(down_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
+            } else if down_button.hovered() {
+                let down_rect = down_button_rect.expand(1.0);
+                ui.painter().rect(down_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
+            } else {
+                ui.painter().rect(down_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+            }
 
-                if down_button.clicked() {
-                    // TODO: Add bound checking + entries from central_user_list should be swapped instead of this.
-                    self.central_draw_list.swap(i, i + 1);
-                }
+            let down_icon_pos = down_button_rect.min + Vec2::new(down_button_rect.width() / 2.0 + 1.0, down_button_rect.height() / 2.0 + 1.0);
+            let down_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+
+            ui.painter().text(
+                down_icon_pos, egui::Align2::CENTER_CENTER, "v", down_icon_id, egui::Color32::BLACK,
+            );
+
+            if down_button.clicked() {
+                // TODO: Add bound checking + entries from central_user_list should be swapped insted of this.
+                self.central_draw_list.swap(i, i + 1);
+            }
 
 
-                // Drawing and handling the "move up" button.
-                let up_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(86.0, -5.0);
-                let up_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
-                let up_button_rect = Rect::from_min_size(up_button_pos, up_button_size);
+            // Drawing and handling the "move up" button.
+            let up_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(86.0, -5.0);
+            let up_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+            let up_button_rect = Rect::from_min_size(up_button_pos, up_button_size);
 
-                let up_button = ui.interact(up_button_rect, egui::Id::new("central_entry_up_btn"), egui::Sense::click());
+            let up_button = ui.interact(up_button_rect, egui::Id::new("central_entry_up_btn"), egui::Sense::click());
 
-                if up_button.is_pointer_button_down_on() {
-                    let up_rect = up_button_rect.expand(1.0);
-                    ui.painter().rect(up_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
-                } else if up_button.hovered() {
-                    let up_rect = up_button_rect.expand(1.0);
-                    ui.painter().rect(up_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
-                } else {
-                    ui.painter().rect(up_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
-                }
+            if up_button.is_pointer_button_down_on() {
+                let up_rect = up_button_rect.expand(1.0);
+                ui.painter().rect(up_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
+            } else if up_button.hovered() {
+                let up_rect = up_button_rect.expand(1.0);
+                ui.painter().rect(up_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
+            } else {
+                ui.painter().rect(up_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+            }
 
-                let up_icon_pos = up_button_rect.min + Vec2::new(up_button_rect.width() / 2.0 + 1.0, up_button_rect.height() / 2.0 + 1.0);
-                let up_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+            let up_icon_pos = up_button_rect.min + Vec2::new(up_button_rect.width() / 2.0 + 1.0, up_button_rect.height() / 2.0 + 1.0);
+            let up_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
 
-                ui.painter().text(
-                    up_icon_pos, egui::Align2::CENTER_CENTER, "^", up_icon_id, egui::Color32::BLACK,
-                );
+            ui.painter().text(
+                up_icon_pos, egui::Align2::CENTER_CENTER, "^", up_icon_id, egui::Color32::BLACK,
+            );
 
-                if up_button.clicked() {
-                    // TODO: Add bound checking + entries from central_user_list should be swapped instead of this.
-                    self.central_draw_list.swap(i, i - 1);
-                }
+            if up_button.clicked() {
+                // TODO: Add bound checking + entries from central_user_list should be swapped instead of this.
+                self.central_draw_list.swap(i, i - 1);
             }
         }
     }
@@ -1073,9 +1069,8 @@ impl MovieApp {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
 
-            if let Some((search, productions)) = self.fetch_productions_job.poll_owned() {
+            if let Some(productions) = self.fetch_productions_job.poll_owned() {
                 let productions: Rc<[Production]> = productions.into();
-                self.search_cache.insert(search.clone(), productions.clone());
                 self.search_productions = Some(productions);
             }
 

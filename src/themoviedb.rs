@@ -48,7 +48,7 @@ impl TheMovieDB {
             .set("Authorization", &format!("Bearer {}", self.api_key))
     }
 
-    pub fn search_production(&mut self, query: String) -> Job<(String, Vec<Production>)> {
+    pub fn search_production(&mut self, query: String) -> Job<Vec<Production>> {
         let url = format!("{SEARCH_MULTI_URL}?query={query}&include_adult={}", true);
         let request = self.new_authorized_get(&url);
 
@@ -69,7 +69,7 @@ impl TheMovieDB {
             let mut arr: Value = payload["results"].take();
             if !arr.is_array() {
                 eprintln!("Results are not in an array");
-                return (query, vec![]);
+                return Vec::new();
             }
             let list = arr.as_array_mut().unwrap();
             let mut productions = Vec::with_capacity(list.len());
@@ -85,7 +85,7 @@ impl TheMovieDB {
                 }
             }
 
-            (query, productions)
+            productions
         })
     }
 
