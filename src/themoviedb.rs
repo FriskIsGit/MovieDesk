@@ -201,7 +201,7 @@ impl TheMovieDB {
         self.get_imdb_url(url, title)
     }
     pub fn get_imdb_url_series(&self, name: &str, series_id: u32) -> String {
-        let url = format!("{MOVIE_DETAILS_URL}/{series_id}/external_ids");
+        let url = format!("{SERIES_DETAILS_URL}/{series_id}/external_ids");
         self.get_imdb_url(url, name)
     }
 
