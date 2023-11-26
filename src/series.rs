@@ -40,6 +40,9 @@ impl Series {
             seasons: details.seasons,
         }
     }
+    pub fn has_specials(&self) -> bool {
+        self.seasons[0].season_number == 0
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -83,12 +86,6 @@ pub struct SeriesDetails {
     pub status: String, //is finished?
     //pub episode_run_time: Vec<u32>, this is broken
     pub seasons: Vec<Season>,
-}
-
-impl SeriesDetails {
-    pub fn has_specials(&self) -> bool {
-        self.seasons[0].season_number == 0
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

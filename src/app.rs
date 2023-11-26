@@ -48,7 +48,6 @@ pub struct MovieApp {
     // Notes
     series_details_job: Job<SeriesDetails>,
     season_details_job: Job<SeasonDetails>,
-    series_details: Option<SeriesDetails>,
     season_details: Option<SeasonDetails>,
     selection: Selection,
 
@@ -92,7 +91,6 @@ impl MovieApp {
 
             series_details_job: Job::Empty,
             season_details_job: Job::Empty,
-            series_details: None,
             season_details: None,
             selection: Selection::new(),
 
@@ -664,51 +662,46 @@ impl MovieApp {
                     ui.add_sized([100.0, 100.0], image);
                 }
 
-                if let Some(details) = self.series_details_job.poll_owned() {
-                    self.series_details = Some(details);
+                let display = if self.selection.season.is_some() {
+                    format!("S{}", self.selection.season())
+                } else {
+                    "None".to_string()
+                };
+                let before_render_season = self.selection.season.unwrap_or(0);
+                egui::ComboBox::from_label("Select season!")
+                    .selected_text(display)
+                    .show_ui(ui, |ui| {
+                        for i in 1..=series.number_of_seasons {
+                            ui.selectable_value(&mut self.selection.season, Some(i), format!("S{}", i));
+                        }
+                        ui.selectable_value(&mut self.selection.season, None, "None");
+                    });
+
+                let after_render_season = self.selection.season.unwrap_or(0);
+                if before_render_season != after_render_season {
+                    self.selection.episode = None;
                 }
-                if let Some(details) = &self.series_details {
-                    let display = if self.selection.season.is_some() {
-                        format!("S{}", self.selection.season())
+                if let Some(season_num) = self.selection.season {
+                    let season_num = season_num as usize;
+                    let display = if let Some(episode) = self.selection.episode {
+                        format!("EP{}", episode)
                     } else {
                         "None".to_string()
                     };
-                    let before_render_season = self.selection.season.unwrap_or(0);
-                    egui::ComboBox::from_label("Select season!")
+                    let all_episodes;
+                    if series.has_specials() {
+                        all_episodes = series.seasons[season_num].episode_count;
+                    } else {
+                        all_episodes = series.seasons[season_num - 1].episode_count;
+                    }
+                    egui::ComboBox::from_label("Select episode!")
                         .selected_text(display)
                         .show_ui(ui, |ui| {
-                            for i in 1..=details.number_of_seasons {
-                                ui.selectable_value(&mut self.selection.season, Some(i), format!("S{}", i));
+                            for i in 1..=all_episodes {
+                                ui.selectable_value(&mut self.selection.episode, Some(i), format!("EP{}", i));
                             }
-                            ui.selectable_value(&mut self.selection.season, None, "None");
+                            ui.selectable_value(&mut self.selection.episode, None, "None");
                         });
-
-                    let after_render_season = self.selection.season.unwrap_or(0);
-                    if before_render_season != after_render_season {
-                        self.selection.episode = None;
-                    }
-                    if let Some(season_num) = self.selection.season {
-                        let season_num = season_num as usize;
-                        let display = if let Some(episode) = self.selection.episode {
-                            format!("EP{}", episode)
-                        } else {
-                            "None".to_string()
-                        };
-                        let all_episodes;
-                        if details.has_specials() {
-                            all_episodes = details.seasons[season_num].episode_count;
-                        } else {
-                            all_episodes = details.seasons[season_num - 1].episode_count;
-                        }
-                        egui::ComboBox::from_label("Select episode!")
-                            .selected_text(display)
-                            .show_ui(ui, |ui| {
-                                for i in 1..=all_episodes {
-                                    ui.selectable_value(&mut self.selection.episode, Some(i), format!("EP{}", i));
-                                }
-                                ui.selectable_value(&mut self.selection.episode, None, "None");
-                            });
-                    }
                 }
             }
 
@@ -751,23 +744,24 @@ impl MovieApp {
                 ui.add_space(8.0);
                 if let Some(episode_num) = self.selection.episode {
                     let season_num = self.selection.season();
-                    let series_details = self.series_details.as_ref().unwrap();
+                    let seasons = user_series.series.number_of_seasons;
+                    let episodes = user_series.series.number_of_episodes;
                     // we shouldn't ensure length every frame but at the same time we shouldn't
                     // allocate all of it because series can be very big and we save space in json (read/write)
-                    user_series.ensure_seasons(series_details.number_of_seasons as usize);
+                    user_series.ensure_seasons(seasons as usize);
                     ui.label(format!("Episode {} notes:", episode_num));
                     ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                         let season_notes = &mut user_series.season_notes[season_num as usize - 1];
-                        season_notes.ensure_episodes(series_details.number_of_episodes as usize);
+                        season_notes.ensure_episodes(episodes as usize);
                         ui.text_edit_multiline(&mut season_notes.episode_notes[episode_num as usize - 1]);
                     });
                     return;
                 }
                 if let Some(season_num) = self.selection.season {
-                    let series_details = self.series_details.as_ref().unwrap();
                     // we shouldn't ensure length every frame but at the same time we shouldn't
                     // allocate all of it because series can be very big and we save space in json (read/write)
-                    user_series.ensure_seasons(series_details.number_of_seasons as usize);
+                    let seasons = user_series.series.number_of_seasons;
+                    user_series.ensure_seasons(seasons as usize);
                     ui.label(format!("Season {} notes:", season_num));
                     ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                         ui.text_edit_multiline(&mut user_series.season_notes[season_num as usize - 1].note);
