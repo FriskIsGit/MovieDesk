@@ -13,9 +13,13 @@ pub struct Series {
     pub first_air_date: String,
     pub vote_average: f32,
     pub adult: bool,
+    #[serde(default)]
     pub number_of_seasons: u32,
+    #[serde(default)]
     pub number_of_episodes: u32,
+    #[serde(default)]
     pub status: String,
+    #[serde(default)]
     pub seasons: Vec<Season>,
 }
 impl Series {
