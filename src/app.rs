@@ -47,8 +47,6 @@ pub struct MovieApp {
     user_series: Vec<UserSeries>,
     // Notes
     series_details_job: Job<SeriesDetails>,
-    season_details_job: Job<SeasonDetails>,
-    season_details: Option<SeasonDetails>,
     selection: Selection,
 
     toasts: Toasts,
@@ -90,8 +88,6 @@ impl MovieApp {
             user_series: Vec::new(),
 
             series_details_job: Job::Empty,
-            season_details_job: Job::Empty,
-            season_details: None,
             selection: Selection::new(),
 
             selected_entry: EntryType::None,
@@ -195,9 +191,6 @@ impl MovieApp {
                             self.selection.index = Some(i);
                             self.selection.season = None;
                             self.selection.episode = None;
-                            // TODO: Shouldn't be called here. There is no need to call this every
-                            //       time we click on any other series entries
-                            self.series_details_job = self.movie_db.get_series_details(id);
                         }
                     }
                 }
