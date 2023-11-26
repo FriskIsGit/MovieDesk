@@ -8,11 +8,12 @@ use crate::{
 
 use egui::{include_image, ImageSource::Uri, Label, Sense, Id};
 use crate::movies::MovieDetails;
+use crate::series::SearchedSeries;
 
 pub struct SeriesView {
     window_open: bool,
     window_title: String,
-    series: Option<Series>,
+    series: Option<SearchedSeries>,
 
     series_details: Job<SeriesDetails>,
     season_details: Job<SeasonDetails>,
@@ -50,7 +51,7 @@ impl SeriesView {
         }
     }
 
-    pub fn set_series(&mut self, series: Series, movie_db: &TheMovieDB) {
+    pub fn set_series(&mut self, series: SearchedSeries, movie_db: &TheMovieDB) {
         let id = series.id;
         self.window_title = series.name.clone();
         self.series = Some(series);

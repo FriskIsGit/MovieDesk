@@ -77,8 +77,8 @@ impl TheMovieDB {
             for prod_obj in list {
                 let media_type = &prod_obj["media_type"];
                 if media_type == "tv" {
-                    let series = serde_json::from_value(prod_obj.take()).unwrap();
-                    productions.push(Production::Series(series));
+                    let searched_series = serde_json::from_value(prod_obj.take()).unwrap();
+                    productions.push(Production::SearchedSeries(searched_series));
                 } else if media_type == "movie" {
                     let movie = serde_json::from_value(prod_obj.take()).unwrap();
                     productions.push(Production::Movie(movie));
@@ -113,6 +113,18 @@ impl TheMovieDB {
 
             serde_json::from_reader(response.into_reader()).unwrap()
         })
+    }
+    pub fn get_series_details_now(&self, id: u32) -> SeriesDetails {
+        let url = format!("{SERIES_DETAILS_URL}{id}");
+        let request = self.new_authorized_get(&url);
+
+        println!("Executing request in get_series_details_now");
+
+        let Ok(response) = request.call() else {
+            panic!("Error on sending request");
+        };
+
+        serde_json::from_reader(response.into_reader()).unwrap()
     }
 
     pub fn get_season_details(&self, series_id: u32, season_number: u32) -> Job<SeasonDetails> {

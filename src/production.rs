@@ -3,13 +3,12 @@ use serde_json::{json, Value};
 use std::fs::File;
 use std::io::{BufReader, Write};
 use crate::movies::{Movie, UserMovie};
-use crate::series::{Series, UserSeries};
+use crate::series::{Series, UserSeries, SearchedSeries};
 
-#[derive(Clone)]
 pub enum Production {
     Movie(Movie),
     Series(Series),
-    // SearchedSeries(SearchedSeries),
+    SearchedSeries(SearchedSeries),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -143,7 +142,8 @@ impl ListEntry {
         }
     }
 
-    pub fn from_series(series: &Series) -> Self {
+    pub fn from_series(user_series: &UserSeries) -> Self {
+        let series = &user_series.series;
         Self {
             production_id: EntryType::Series(series.id),
 

@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::jobs::Job;
 use crate::production::{CentralListOrdering, EntryType, ListEntry, Production};
 use crate::movies::{Movie, UserMovie};
-use crate::series::{Series, UserSeries, SeasonDetails, SeriesDetails};
+use crate::series::{Series, UserSeries, SeasonDetails, SeriesDetails, SearchedSeries};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{LicenseView, MovieView, SeriesView, TrailersView};
 
@@ -123,7 +123,7 @@ impl MovieApp {
         // Maybe the order of the list should also be saved somehow?
 
         for series in &self.user_series {
-            let entry = ListEntry::from_series(&series.series);
+            let entry = ListEntry::from_series(series);
             self.central_user_list.push(entry);
         }
 
@@ -141,7 +141,7 @@ impl MovieApp {
         self.central_draw_list_update();
     }
 
-    fn central_list_add_series(&mut self, series: &Series) {
+    fn central_list_add_series(&mut self, series: &UserSeries) {
         let entry = ListEntry::from_series(series);
         self.central_user_list.push(entry);
         self.central_draw_list_update();
@@ -800,6 +800,18 @@ impl MovieApp {
                         self.load_data();
                     }
 
+                    if ui.button("Migrate data").clicked() {
+                        for mut user_series in self.user_series.iter_mut() {
+                            let mut details = self.movie_db.get_series_details_now(user_series.series.id);
+                            user_series.series.number_of_seasons = details.number_of_seasons;
+                            user_series.series.number_of_episodes = details.number_of_episodes;
+                            user_series.series.seasons = std::mem::take(&mut details.seasons);
+                            user_series.series.status = std::mem::take(&mut details.status);
+                        }
+
+                        self.save_data();
+                    }
+
                     if ui.button("Load data from file").clicked() {}
                 });
 
@@ -959,7 +971,7 @@ impl MovieApp {
         ui.separator();
     }
 
-    fn draw_series_entry(&mut self, ui: &mut Ui, series: &Series) {
+    fn draw_series_entry(&mut self, ui: &mut Ui, series: &SearchedSeries) {
         if series.adult && !self.show_adult_content {
             return;
         }
@@ -983,14 +995,15 @@ impl MovieApp {
                         .any(|user_series| user_series.series.id == series.id);
 
                     if !exists {
+                        let details = self.movie_db.get_series_details_now(series.id);
                         let new_data = UserSeries {
-                            series: series.clone(),
+                            series: Series::from(series, details),
                             note: String::new(),
                             user_rating: 0.0,
                             season_notes: Vec::new(),
                         };
+                        self.central_list_add_series(&new_data);
                         self.user_series.push(new_data);
-                        self.central_list_add_series(series);
                     }
                     ui.close_menu()
                 }
@@ -1082,7 +1095,8 @@ impl MovieApp {
             for prod in &*productions {
                 match prod {
                     Production::Movie(ref movie) => self.draw_movie_entry(ui, movie),
-                    Production::Series(ref series) => self.draw_series_entry(ui, series),
+                    Production::SearchedSeries(ref series) => self.draw_series_entry(ui, series),
+                    _ => {}
                 }
             }
         });

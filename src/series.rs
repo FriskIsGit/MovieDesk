@@ -2,8 +2,44 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Series {
+    pub id: u32,
+    pub name: String,
+    pub original_language: String,
+    pub overview: String,
+    pub popularity: f32,
+    pub poster_path: Option<String>,
+    pub first_air_date: String,
+    pub vote_average: f32,
+    pub adult: bool,
+    pub number_of_seasons: u32,
+    pub number_of_episodes: u32,
+    pub status: String,
+    pub seasons: Vec<Season>,
+}
+impl Series {
+    pub fn from(series: &SearchedSeries, details: SeriesDetails) -> Self {
+        Self {
+            id: series.id,
+            name: series.name.clone(),
+            original_language: series.original_language.clone(),
+            overview: series.overview.clone(),
+            popularity: series.popularity.clone(),
+            poster_path: series.poster_path.clone(),
+            first_air_date: series.first_air_date.clone(),
+            vote_average: series.vote_average,
+            adult: series.adult,
+            number_of_seasons: details.number_of_seasons,
+            number_of_episodes: details.number_of_episodes,
+            status: details.status,
+            seasons: details.seasons,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SearchedSeries {
     pub id: u32,
     pub name: String,
     pub original_language: String,
