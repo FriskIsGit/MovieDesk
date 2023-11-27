@@ -9,6 +9,7 @@ pub enum Job<T> {
     InProgress(JoinHandle<T>),
 }
 
+#[allow(dead_code)]
 impl<T> Job<T> {
     pub fn new<F>(f: F) -> Self
     where

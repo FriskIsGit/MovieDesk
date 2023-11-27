@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::jobs::Job;
 use crate::movies::{Movie, UserMovie};
 use crate::production::{CentralListOrdering, EntryType, ListEntry, Production};
-use crate::series::{SearchedSeries, Series, UserSeries};
+use crate::series::{SearchedSeries, UserSeries};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{LicenseView, MovieView, SeriesView, TrailersView};
 
@@ -764,10 +764,7 @@ impl MovieApp {
                     // Make this a custom button/slider thing where you click on stars to select rating?
                     // ⭐⭐⭐⭐⭐
                     let rating = match self.selection.season {
-                        Some(season_num) => {
-                            user_series.ensure_seasons(season_num as usize);
-                            &mut user_series.season_notes[season_num as usize - 1].user_rating
-                        },
+                        Some(season_num) => &mut user_series.season_notes[season_num as usize - 1].user_rating,
                         None => &mut user_series.user_rating,
                     };
                     ui.add(
@@ -780,24 +777,18 @@ impl MovieApp {
                 ui.add_space(8.0);
                 if let Some(episode_num) = self.selection.episode {
                     let season_num = self.selection.season();
-                    let seasons = user_series.series.number_of_seasons;
-                    let episodes = user_series.series.number_of_episodes;
-                    // we shouldn't ensure length every frame but at the same time we shouldn't
-                    // allocate all of it because series can be very big and we save space in json (read/write)
-                    user_series.ensure_seasons(seasons as usize);
+
+                    // NOTE: Format every frame. BAD! We need to cache it.
                     ui.label(format!("S{season_num} E{episode_num} notes:"));
                     ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                         let season_notes = &mut user_series.season_notes[season_num as usize - 1];
-                        season_notes.ensure_episodes(episodes as usize);
                         ui.text_edit_multiline(&mut season_notes.episode_notes[episode_num as usize - 1]);
                     });
                     return;
                 }
+
                 if let Some(season_num) = self.selection.season {
-                    // we shouldn't ensure length every frame but at the same time we shouldn't
-                    // allocate all of it because series can be very big and we save space in json (read/write)
-                    let seasons = user_series.series.number_of_seasons;
-                    user_series.ensure_seasons(seasons as usize);
+                    // NOTE: Format every frame. BAD! We need to cache it.
                     ui.label(format!("Season {} notes:", season_num));
                     ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                         ui.text_edit_multiline(&mut user_series.season_notes[season_num as usize - 1].note);
@@ -1013,12 +1004,7 @@ impl MovieApp {
 
                     if !exists {
                         let details = self.movie_db.get_series_details_now(series.id);
-                        let new_data = UserSeries {
-                            series: Series::from(series, details),
-                            note: String::new(),
-                            user_rating: 0.0,
-                            season_notes: Vec::new(),
-                        };
+                        let new_data = UserSeries::new(series, details);
                         self.central_list_add_series(&new_data);
                         self.user_series.push(new_data);
                     }

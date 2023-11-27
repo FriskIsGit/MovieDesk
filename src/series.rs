@@ -67,19 +67,29 @@ pub struct UserSeries {
 }
 
 impl UserSeries {
-    pub fn ensure_seasons(&mut self, len: usize) {
-        if self.season_notes.len() >= len {
-            return;
+    pub fn new(searched_series: &SearchedSeries, details: SeriesDetails) -> Self {
+        let mut notes = Vec::new();
+        for season in &details.seasons {
+            let mut episode_notes = Vec::new();
+            for _ in 0..season.episode_count {
+                episode_notes.push(String::new())
+            }
+
+            let season_notes = SeasonNotes::new(episode_notes);
+            notes.push(season_notes);
         }
-        let fill = len - self.season_notes.len();
-        for _ in 0..fill {
-            self.season_notes.push(SeasonNotes::new());
+
+        Self {
+            series: Series::from(searched_series, details),
+            note: String::new(),
+            user_rating: 0.0,
+            season_notes: notes,
         }
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-//we need this struct in order to know how many seasons a series has (are unreleased seasons included?)
+// We need this struct in order to know how many seasons a series has (are unreleased seasons included?)
 pub struct SeriesDetails {
     pub number_of_seasons: u32,
     pub number_of_episodes: u32,
@@ -102,7 +112,7 @@ pub struct Season {
 
 //--------------------------------------------------------------------------------------------------
 #[derive(Debug, Serialize, Deserialize)]
-//represents episodes of one season, not the entire series (shouldn't include what Season already has)
+// Represents episodes of one season, not the entire series (shouldn't include what Season already has)
 pub struct SeasonDetails {
     pub id: u32,
     pub season_number: u32,
@@ -148,20 +158,11 @@ pub struct SeasonNotes {
 }
 
 impl SeasonNotes {
-    pub fn new() -> Self {
+    pub fn new(episode_notes: Vec<String>) -> Self {
         Self {
             note: "".into(),
             user_rating: 0.0,
-            episode_notes: Vec::new(),
-        }
-    }
-    pub fn ensure_episodes(&mut self, len: usize) {
-        if self.episode_notes.len() >= len {
-            return;
-        }
-        let fill = len - self.episode_notes.len();
-        for _ in 0..fill {
-            self.episode_notes.push("".into());
+            episode_notes,
         }
     }
 }
