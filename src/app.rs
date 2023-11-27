@@ -764,7 +764,10 @@ impl MovieApp {
                     // Make this a custom button/slider thing where you click on stars to select rating?
                     // ⭐⭐⭐⭐⭐
                     let rating = match self.selection.season {
-                        Some(season_num) => &mut user_series.season_notes[season_num as usize - 1].user_rating,
+                        Some(season_num) => {
+                            user_series.ensure_seasons(season_num as usize);
+                            &mut user_series.season_notes[season_num as usize - 1].user_rating
+                        },
                         None => &mut user_series.user_rating,
                     };
                     ui.add(
@@ -778,6 +781,7 @@ impl MovieApp {
                 if let Some(episode_num) = self.selection.episode {
                     let season_num = self.selection.season();
                     let seasons = user_series.series.number_of_seasons;
+
                     let episodes = user_series.series.number_of_episodes;
                     // we shouldn't ensure length every frame but at the same time we shouldn't
                     // allocate all of it because series can be very big and we save space in json (read/write)
