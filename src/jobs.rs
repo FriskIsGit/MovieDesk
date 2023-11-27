@@ -53,6 +53,18 @@ impl<T> Job<T> {
             }
         }
     }
+
+    pub fn poll_blocking(&mut self) -> Option<T> {
+        let current_job = std::mem::take(self);
+        match current_job {
+            Self::Empty => None,
+            Self::Finished(data) => Some(data),
+            Self::InProgress(handle) => {
+                *self = Self::Empty;
+                Some(handle.join().unwrap())
+            }
+        }
+    }
 }
 
 // #[derive(Debug)]

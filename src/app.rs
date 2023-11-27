@@ -781,7 +781,6 @@ impl MovieApp {
                 if let Some(episode_num) = self.selection.episode {
                     let season_num = self.selection.season();
                     let seasons = user_series.series.number_of_seasons;
-
                     let episodes = user_series.series.number_of_episodes;
                     // we shouldn't ensure length every frame but at the same time we shouldn't
                     // allocate all of it because series can be very big and we save space in json (read/write)
@@ -828,18 +827,6 @@ impl MovieApp {
 
                     if ui.button("Load data").clicked() {
                         self.load_data();
-                    }
-
-                    if ui.button("Migrate data").clicked() {
-                        for user_series in self.user_series.iter_mut() {
-                            let mut details = self.movie_db.get_series_details_now(user_series.series.id);
-                            user_series.series.number_of_seasons = details.number_of_seasons;
-                            user_series.series.number_of_episodes = details.number_of_episodes;
-                            user_series.series.seasons = std::mem::take(&mut details.seasons);
-                            user_series.series.status = std::mem::take(&mut details.status);
-                        }
-
-                        self.save_data();
                     }
 
                     if ui.button("Load data from file").clicked() {}
@@ -1168,3 +1155,5 @@ impl Selection {
         self.episode.expect("Selection episode is None")
     }
 }
+
+
