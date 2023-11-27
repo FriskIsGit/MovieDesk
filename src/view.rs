@@ -1,14 +1,14 @@
 use crate::{
     jobs::Job,
-    production::Trailer,
     movies::Movie,
-    series::{Series, SeasonDetails, SeriesDetails},
+    production::Trailer,
+    series::{SeasonDetails, SeriesDetails},
     themoviedb::{TheMovieDB, Width},
 };
 
-use egui::{include_image, ImageSource::Uri, Label, Sense, Id};
 use crate::movies::MovieDetails;
 use crate::series::SearchedSeries;
+use egui::{include_image, Id, ImageSource::Uri, Label, Sense};
 
 pub struct SeriesView {
     window_open: bool,
@@ -193,9 +193,17 @@ impl MovieView {
                     ui.label(format!("Language: {}", movie.original_language.to_uppercase()));
                     ui.label(format!("Released: {}", movie.release_date));
                     ui.label(format!("Runtime: {}min", movie_details.runtime));
-                    let budget = if movie_details.budget == 0 { "Unknown".into() } else { movie_details.budget() };
+                    let budget = if movie_details.budget == 0 {
+                        "Unknown".into()
+                    } else {
+                        movie_details.budget()
+                    };
                     ui.label(format!("Budget: {budget}"));
-                    let revenue = if movie_details.revenue == 0 { "Unknown".into() } else { movie_details.revenue() };
+                    let revenue = if movie_details.revenue == 0 {
+                        "Unknown".into()
+                    } else {
+                        movie_details.revenue()
+                    };
                     ui.label(format!("Revenue: {revenue}"));
                     let genres = movie_details.genres.join(",");
                     ui.label(format!("Genres: {}", genres.trim_end_matches(',')));
@@ -268,9 +276,7 @@ impl LicenseView {
             .resizable(true);
 
         window.show(ctx, |ui| {
-            egui::ScrollArea::both().show(ui, |ui| {
-                ui.label(crate::LICENSE)
-            });
+            egui::ScrollArea::both().show(ui, |ui| ui.label(crate::LICENSE));
         });
     }
 }

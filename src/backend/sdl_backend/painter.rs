@@ -4,12 +4,12 @@ extern crate sdl2;
 use core::mem;
 use core::ptr;
 use core::str;
-use std::collections::HashMap;
 use egui::{
     epaint::{Color32, Mesh, Primitive},
     vec2, ClippedPrimitive, Pos2, Rect,
 };
 use gl::types::{GLchar, GLenum, GLint, GLsizeiptr, GLsync, GLuint};
+use std::collections::HashMap;
 use std::ffi::CString;
 
 use super::ShaderVersion;

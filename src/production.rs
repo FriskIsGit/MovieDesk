@@ -1,10 +1,11 @@
+use crate::movies::{Movie, UserMovie};
+use crate::series::{SearchedSeries, Series, UserSeries};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs::File;
 use std::io::{BufReader, Write};
-use crate::movies::{Movie, UserMovie};
-use crate::series::{Series, UserSeries, SearchedSeries};
 
+#[allow(dead_code)]
 pub enum Production {
     Movie(Movie),
     Series(Series),
@@ -178,7 +179,6 @@ pub enum CentralListOrdering {
     Alphabetic,
     RatingAscending,
     RatingDescending,
-
     // TODO(maybe?):
     // UserRatingAscending,
     // UserRatingDescending,

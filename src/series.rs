@@ -1,6 +1,5 @@
-use std::fmt::Display;
 use serde::{Deserialize, Serialize};
-
+use std::fmt::Display;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Series {
@@ -29,7 +28,7 @@ impl Series {
             name: series.name.clone(),
             original_language: series.original_language.clone(),
             overview: series.overview.clone(),
-            popularity: series.popularity.clone(),
+            popularity: series.popularity,
             poster_path: series.poster_path.clone(),
             first_air_date: series.first_air_date.clone(),
             vote_average: series.vote_average,
@@ -40,6 +39,7 @@ impl Series {
             seasons: details.seasons,
         }
     }
+
     pub fn has_specials(&self) -> bool {
         self.seasons[0].season_number == 0
     }
@@ -116,10 +116,7 @@ impl SeasonDetails {
         let minutes = self.episodes.iter().filter_map(|ep| ep.runtime).sum();
         let hours = minutes as f32 / 60.0;
 
-        Runtime {
-            minutes,
-            hours
-        }
+        Runtime { minutes, hours }
     }
 }
 

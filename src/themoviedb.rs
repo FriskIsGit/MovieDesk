@@ -1,11 +1,11 @@
 use crate::jobs::Job;
+use crate::movies::MovieDetails;
 use crate::production::{Keyword, Production, ProductionIds, Trailer};
 use crate::series::{SeasonDetails, SeriesDetails};
 use egui::TextBuffer;
 use serde_json::Value;
 use std::time::Duration;
 use ureq::{Agent, AgentBuilder};
-use crate::movies::MovieDetails;
 
 const SEARCH_MULTI_URL: &str = "https://api.themoviedb.org/3/search/multi";
 const SERIES_DETAILS_URL: &str = "https://api.themoviedb.org/3/tv/"; //{series_id}
@@ -31,6 +31,7 @@ pub struct TheMovieDB {
     // query_to_prod: VecMap<String, Vec<Production>>,
 }
 
+#[allow(dead_code)]
 impl TheMovieDB {
     pub fn new(key: String, _use_cache: bool) -> Self {
         Self {
@@ -150,9 +151,9 @@ impl TheMovieDB {
             Ok(response) => {
                 let json_response = response.into_string().unwrap();
                 println!("{}", json_response);
-            },
+            }
             Err(err) => {
-                eprintln!("{}", err.to_string())
+                eprintln!("{}", err)
             }
         }
     }

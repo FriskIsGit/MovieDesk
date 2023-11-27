@@ -1,11 +1,13 @@
 use std::time::{Duration, Instant};
 
+#[allow(dead_code)]
 pub struct RateLimiter {
     pub max_hits: usize,
     pub time_frame: Duration,
     hits: Vec<Instant>,
 }
 
+#[allow(dead_code)]
 impl RateLimiter {
     pub fn new(max_hits: usize, time_frame: Duration) -> Self {
         Self {

@@ -1,20 +1,17 @@
 use crate::config::Config;
 use crate::jobs::Job;
-use crate::production::{CentralListOrdering, EntryType, ListEntry, Production};
 use crate::movies::{Movie, UserMovie};
-use crate::series::{Series, UserSeries, SeasonDetails, SeriesDetails, SearchedSeries};
+use crate::production::{CentralListOrdering, EntryType, ListEntry, Production};
+use crate::series::{SearchedSeries, Series, UserSeries};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{LicenseView, MovieView, SeriesView, TrailersView};
 
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
-use std::time::Duration;
 
-use crate::limiter::RateLimiter;
 use crate::production;
-use egui::ahash::HashSet;
-use egui::{Align, Layout, Rect, Response, TopBottomPanel, Ui, Vec2, Pos2, Visuals, include_image};
+use egui::{include_image, Align, Layout, Pos2, Rect, TopBottomPanel, Ui, Vec2, Visuals};
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 pub struct MovieApp {
@@ -26,7 +23,6 @@ pub struct MovieApp {
     fetch_productions_job: Job<Vec<Production>>,
 
     description_cache: HashMap<u32, String>,
-    rendered_ids: HashSet<u32>,
 
     // Central panel
     selected_entry: EntryType,
@@ -45,19 +41,16 @@ pub struct MovieApp {
     // Right panel
     user_movies: Vec<UserMovie>,
     user_series: Vec<UserSeries>,
-    // Notes
-    series_details_job: Job<SeriesDetails>,
     selection: Selection,
 
     toasts: Toasts,
+
     // View states
     series_view: SeriesView,
     movie_view: MovieView,
     trailers_view: TrailersView,
     license_view: LicenseView,
 
-    // Rate limiter
-    image_limiter: RateLimiter,
     // Not a part of the layout
     movie_db: TheMovieDB,
     pub config: Config,
@@ -81,13 +74,11 @@ impl MovieApp {
             show_adult_content: config.include_adult,
             search_productions: None,
             description_cache: HashMap::new(),
-            rendered_ids: HashSet::default(),
             fetch_productions_job: Job::Empty,
 
             user_movies: Vec::new(),
             user_series: Vec::new(),
 
-            series_details_job: Job::Empty,
             selection: Selection::new(),
 
             selected_entry: EntryType::None,
@@ -104,7 +95,6 @@ impl MovieApp {
             trailers_view: TrailersView::new(),
             license_view: LicenseView::new(),
 
-            image_limiter: RateLimiter::new(20, Duration::from_secs(1)),
             movie_db,
             config,
         }
@@ -244,7 +234,7 @@ impl MovieApp {
                     options: ToastOptions::default()
                         .duration_in_seconds(2.5)
                         .show_progress(true)
-                        .show_icon(true)
+                        .show_icon(true),
                 });
             }
             Err(msg) => {
@@ -255,11 +245,10 @@ impl MovieApp {
                     options: ToastOptions::default()
                         .duration_in_seconds(3.5)
                         .show_progress(true)
-                        .show_icon(true)
+                        .show_icon(true),
                 });
             }
         }
-
     }
 
     pub fn load_data(&mut self) {
@@ -274,7 +263,7 @@ impl MovieApp {
                     options: ToastOptions::default()
                         .duration_in_seconds(2.5)
                         .show_progress(true)
-                        .show_icon(true)
+                        .show_icon(true),
                 });
             }
             Err(msg) => {
@@ -285,9 +274,9 @@ impl MovieApp {
                     options: ToastOptions::default()
                         .duration_in_seconds(3.5)
                         .show_progress(true)
-                        .show_icon(true)
+                        .show_icon(true),
                 });
-            },
+            }
         }
 
         self.central_list_reload();
@@ -436,18 +425,18 @@ impl MovieApp {
     fn render_central_panel_entries(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         for i in 0..self.central_draw_list.len() {
             // HACK: Workaround for egui junky-ness.
-            //     We are using indexes because early returning after clicking the "delete" button causes 
-            //     the scrollbar to flicker. This ensures then we never go out of bounds after removing an 
+            //     We are using indexes because early returning after clicking the "delete" button causes
+            //     the scrollbar to flicker. This ensures then we never go out of bounds after removing an
             //     item from central_draw_list and hence changing its length.
             if i >= self.central_draw_list.len() {
-                break
+                break;
             }
 
             let entry_size = Vec2::new(ui.available_width(), 32.0);
             let (entry_rect, entry_response) = ui.allocate_exact_size(entry_size, egui::Sense::click());
 
             if !ui.is_rect_visible(entry_rect) {
-                continue
+                continue;
             }
 
             let mut entry_selected = self.central_draw_list[i].is_selected(&self.selected_entry);
@@ -497,11 +486,15 @@ impl MovieApp {
             let title_font_pos = entry_rect.min + Vec2::new(32.0, entry_rect.height() / 2.0);
             let title_font_id = egui::FontId::new(12.0, eframe::epaint::FontFamily::Proportional);
             ui.painter().text(
-                title_font_pos, egui::Align2::LEFT_CENTER, &self.central_draw_list[i].name, title_font_id, egui::Color32::GRAY,
+                title_font_pos,
+                egui::Align2::LEFT_CENTER,
+                &self.central_draw_list[i].name,
+                title_font_id,
+                egui::Color32::GRAY,
             );
 
             if !entry_hovered {
-                continue
+                continue;
             }
 
             // Maybe this logic could be extracted or maybe a custom widget could be created instead?
@@ -511,23 +504,37 @@ impl MovieApp {
             let bin_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
             let bin_button_rect = Rect::from_min_size(bin_button_pos, bin_button_size);
 
-            let bin_button = ui.interact(bin_button_rect, egui::Id::new("central_entry_bin_btn"), egui::Sense::click());
+            let bin_button = ui.interact(
+                bin_button_rect,
+                egui::Id::new("central_entry_bin_btn"),
+                egui::Sense::click(),
+            );
 
             if bin_button.is_pointer_button_down_on() {
                 let bin_rect = bin_button_rect.expand(1.0);
                 ui.painter().rect(bin_rect, 6.0, egui::Color32::RED, egui::Stroke::NONE);
             } else if bin_button.hovered() {
                 let bin_rect = bin_button_rect.expand(1.0);
-                ui.painter().rect(bin_rect, 6.0, egui::Color32::LIGHT_RED, egui::Stroke::NONE);
+                ui.painter()
+                    .rect(bin_rect, 6.0, egui::Color32::LIGHT_RED, egui::Stroke::NONE);
             } else {
-                ui.painter().rect(bin_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                ui.painter()
+                    .rect(bin_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
             }
 
-            let bin_icon_pos = bin_button_rect.min + Vec2::new(bin_button_rect.width() / 2.0 + 1.0, bin_button_rect.height() / 2.0 + 1.0);
+            let bin_icon_pos = bin_button_rect.min
+                + Vec2::new(
+                    bin_button_rect.width() / 2.0 + 1.0,
+                    bin_button_rect.height() / 2.0 + 1.0,
+                );
             let bin_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
 
             ui.painter().text(
-                bin_icon_pos, egui::Align2::CENTER_CENTER, "🗑", bin_icon_id, egui::Color32::BLACK,
+                bin_icon_pos,
+                egui::Align2::CENTER_CENTER,
+                "🗑",
+                bin_icon_id,
+                egui::Color32::BLACK,
             );
 
             if bin_button.clicked() {
@@ -540,23 +547,38 @@ impl MovieApp {
             let down_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
             let down_button_rect = Rect::from_min_size(down_button_pos, down_button_size);
 
-            let down_button = ui.interact(down_button_rect, egui::Id::new("central_entry_down_btn"), egui::Sense::click());
+            let down_button = ui.interact(
+                down_button_rect,
+                egui::Id::new("central_entry_down_btn"),
+                egui::Sense::click(),
+            );
 
             if down_button.is_pointer_button_down_on() {
                 let down_rect = down_button_rect.expand(1.0);
-                ui.painter().rect(down_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
+                ui.painter()
+                    .rect(down_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
             } else if down_button.hovered() {
                 let down_rect = down_button_rect.expand(1.0);
-                ui.painter().rect(down_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
+                ui.painter()
+                    .rect(down_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
             } else {
-                ui.painter().rect(down_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                ui.painter()
+                    .rect(down_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
             }
 
-            let down_icon_pos = down_button_rect.min + Vec2::new(down_button_rect.width() / 2.0 + 1.0, down_button_rect.height() / 2.0 + 1.0);
+            let down_icon_pos = down_button_rect.min
+                + Vec2::new(
+                    down_button_rect.width() / 2.0 + 1.0,
+                    down_button_rect.height() / 2.0 + 1.0,
+                );
             let down_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
 
             ui.painter().text(
-                down_icon_pos, egui::Align2::CENTER_CENTER, "v", down_icon_id, egui::Color32::BLACK,
+                down_icon_pos,
+                egui::Align2::CENTER_CENTER,
+                "v",
+                down_icon_id,
+                egui::Color32::BLACK,
             );
 
             if down_button.clicked() {
@@ -564,29 +586,39 @@ impl MovieApp {
                 self.central_draw_list.swap(i, i + 1);
             }
 
-
             // Drawing and handling the "move up" button.
             let up_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(86.0, -5.0);
             let up_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
             let up_button_rect = Rect::from_min_size(up_button_pos, up_button_size);
 
-            let up_button = ui.interact(up_button_rect, egui::Id::new("central_entry_up_btn"), egui::Sense::click());
+            let up_button = ui.interact(
+                up_button_rect,
+                egui::Id::new("central_entry_up_btn"),
+                egui::Sense::click(),
+            );
 
             if up_button.is_pointer_button_down_on() {
                 let up_rect = up_button_rect.expand(1.0);
                 ui.painter().rect(up_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
             } else if up_button.hovered() {
                 let up_rect = up_button_rect.expand(1.0);
-                ui.painter().rect(up_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
+                ui.painter()
+                    .rect(up_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
             } else {
-                ui.painter().rect(up_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                ui.painter()
+                    .rect(up_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
             }
 
-            let up_icon_pos = up_button_rect.min + Vec2::new(up_button_rect.width() / 2.0 + 1.0, up_button_rect.height() / 2.0 + 1.0);
+            let up_icon_pos =
+                up_button_rect.min + Vec2::new(up_button_rect.width() / 2.0 + 1.0, up_button_rect.height() / 2.0 + 1.0);
             let up_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
 
             ui.painter().text(
-                up_icon_pos, egui::Align2::CENTER_CENTER, "^", up_icon_id, egui::Color32::BLACK,
+                up_icon_pos,
+                egui::Align2::CENTER_CENTER,
+                "^",
+                up_icon_id,
+                egui::Color32::BLACK,
             );
 
             if up_button.clicked() {
@@ -660,6 +692,7 @@ impl MovieApp {
                 } else {
                     "None".to_string()
                 };
+
                 let before_render_season = self.selection.season.unwrap_or(0);
                 egui::ComboBox::from_label("Select season!")
                     .selected_text(display)
@@ -674,6 +707,7 @@ impl MovieApp {
                 if before_render_season != after_render_season {
                     self.selection.episode = None;
                 }
+
                 if let Some(season_num) = self.selection.season {
                     let season_num = season_num as usize;
                     let display = if let Some(episode) = self.selection.episode {
@@ -681,12 +715,13 @@ impl MovieApp {
                     } else {
                         "None".to_string()
                     };
-                    let all_episodes;
-                    if series.has_specials() {
-                        all_episodes = series.seasons[season_num].episode_count;
+
+                    let all_episodes = if series.has_specials() {
+                        series.seasons[season_num].episode_count
                     } else {
-                        all_episodes = series.seasons[season_num - 1].episode_count;
-                    }
+                        series.seasons[season_num - 1].episode_count
+                    };
+
                     egui::ComboBox::from_label("Select episode!")
                         .selected_text(display)
                         .show_ui(ui, |ui| {
@@ -730,7 +765,7 @@ impl MovieApp {
                     // ⭐⭐⭐⭐⭐
                     let rating = match self.selection.season {
                         Some(season_num) => &mut user_series.season_notes[season_num as usize - 1].user_rating,
-                        None => &mut user_series.user_rating
+                        None => &mut user_series.user_rating,
                     };
                     ui.add(
                         egui::DragValue::new(rating)
@@ -774,7 +809,6 @@ impl MovieApp {
         });
     }
 
-
     // Could be used for some toolbar logic at the top of the layout.
     // | File | View | Settings | Help | Info | ... etc.
     // Just like many popular programs.
@@ -793,7 +827,7 @@ impl MovieApp {
                     }
 
                     if ui.button("Migrate data").clicked() {
-                        for mut user_series in self.user_series.iter_mut() {
+                        for user_series in self.user_series.iter_mut() {
                             let mut details = self.movie_db.get_series_details_now(user_series.series.id);
                             user_series.series.number_of_seasons = details.number_of_seasons;
                             user_series.series.number_of_episodes = details.number_of_episodes;
@@ -852,7 +886,7 @@ impl MovieApp {
                 });
 
                 ui.menu_button("About", |_| {});
-                ui.menu_button("License", |ui| {
+                ui.menu_button("License", |_| {
                     self.license_view.is_open = true;
                 });
             });
@@ -1101,6 +1135,8 @@ struct Selection {
     season: Option<u32>,  //cannot be 0
     episode: Option<u32>, //cannot be 0
 }
+
+#[allow(dead_code)]
 impl Selection {
     pub fn new() -> Self {
         Self {
@@ -1109,17 +1145,21 @@ impl Selection {
             episode: None,
         }
     }
+
     pub fn unselect_all(&mut self) {
         self.index = None;
         self.season = None;
         self.episode = None;
     }
+
     pub fn index(&self) -> usize {
         self.index.expect("Selection index is None")
     }
+
     pub fn season(&self) -> u32 {
         self.season.expect("Selection season is None")
     }
+
     pub fn episode(&self) -> u32 {
         self.episode.expect("Selection episode is None")
     }

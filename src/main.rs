@@ -1,14 +1,14 @@
 mod app;
-mod view;
 mod backend;
 mod config;
 mod credits;
 mod jobs;
-mod production;
-mod themoviedb;
 mod limiter;
 mod movies;
+mod production;
 mod series;
+mod themoviedb;
+mod view;
 
 pub const LICENSE: &str = include_str!("../LICENSE.md");
 
@@ -24,5 +24,3 @@ fn main() {
     #[cfg(feature = "eframe_backend")]
     backend::eframe_backend::run_app();
 }
-
-
