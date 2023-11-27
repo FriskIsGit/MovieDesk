@@ -702,6 +702,7 @@ impl MovieApp {
             ui.add_space(8.0);
 
             // lots of duplicates
+            // TODO: Implement methods for notes on seasons and episodes for safer access
             ui.label("Your rating:");
             let user_movie;
             let user_series;
@@ -727,8 +728,12 @@ impl MovieApp {
                 ui.horizontal(|ui| {
                     // Make this a custom button/slider thing where you click on stars to select rating?
                     // ⭐⭐⭐⭐⭐
+                    let rating = match self.selection.season {
+                        Some(season_num) => &mut user_series.season_notes[season_num as usize - 1].user_rating,
+                        None => &mut user_series.user_rating
+                    };
                     ui.add(
-                        egui::DragValue::new(&mut user_series.user_rating)
+                        egui::DragValue::new(rating)
                             .speed(0.1)
                             .clamp_range(RangeInclusive::new(0.0, 10.0)),
                     );
@@ -742,7 +747,7 @@ impl MovieApp {
                     // we shouldn't ensure length every frame but at the same time we shouldn't
                     // allocate all of it because series can be very big and we save space in json (read/write)
                     user_series.ensure_seasons(seasons as usize);
-                    ui.label(format!("Episode {} notes:", episode_num));
+                    ui.label(format!("S{season_num} E{episode_num} notes:"));
                     ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                         let season_notes = &mut user_series.season_notes[season_num as usize - 1];
                         season_notes.ensure_episodes(episodes as usize);
