@@ -2,7 +2,7 @@ use crate::movies::{Movie, UserMovie};
 use crate::series::{SearchedSeries, Series, UserSeries};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::fs::{File, self};
+use std::fs::{File};
 use std::io::{BufReader, Write};
 
 #[allow(dead_code)]
@@ -10,12 +10,6 @@ pub enum Production {
     Movie(Movie),
     Series(Series),
     SearchedSeries(SearchedSeries),
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum UserProduction {
-    UserMovie(UserMovie),
-    UserSeries(UserSeries),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -54,10 +48,27 @@ pub struct Keyword {
     name: String,
 }
 
-pub fn serialize_user_productions(user_series: &[UserSeries], user_movies: &[UserMovie]) -> Result<(), String> {
+pub struct UserData {
+    pub user_series: Vec<UserSeries>,
+    pub user_movies: Vec<UserMovie>,
+    pub prod_positions: Vec<ProdEntry>,
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProdEntry {
+    pub is_movie: bool,
+    pub id: u32,
+}
+impl ProdEntry {
+    pub fn new(is_movie: bool, id: u32) -> Self{
+        Self { is_movie, id }
+    }
+}
+
+pub fn serialize_user_productions(user_series: &[UserSeries], user_movies: &[UserMovie], prod_positions: &[ProdEntry]) -> Result<(), String> {
     let john = json!({
         "series": user_series,
-        "movies": user_movies
+        "movies": user_movies,
+        "positions": prod_positions,
     });
     let serialized_json = serde_json::to_string(&john).expect("Failed to serialize JSON");
     let temp_path = "res/user_prod_temp.json";
@@ -78,7 +89,7 @@ pub fn serialize_user_productions(user_series: &[UserSeries], user_movies: &[Use
     }
 }
 
-pub fn deserialize_user_productions(path: Option<String>) -> Result<(Vec<UserSeries>, Vec<UserMovie>), String> {
+pub fn deserialize_user_productions(path: Option<String>) -> Result<UserData, String> {
     let path = match path {
         Some(s) => s,
         None => "res/user_prod.json".into(),
@@ -99,44 +110,25 @@ pub fn deserialize_user_productions(path: Option<String>) -> Result<(Vec<UserSer
         Ok(vec_value) => vec_value,
         Err(err) => return Err(err.to_string()),
     };
-    Ok((user_series, user_movies))
-}
-
-pub fn deserialize_user_productions_new(path: &str) -> Result<Vec<UserProduction>, &str> {
-    let Ok(json_string) = fs::read_to_string(path) else {
-        return Err("Failed to load the migrated data file");
-    };
-
-    let Ok(user_productions) = serde_json::from_str::<Vec<UserProduction>>(&json_string) else {
-        return Err("Failed to deserialize the migrated json data")
-    };
-
-    Ok(user_productions)
-}
-
-pub fn migrate_data(user_movies: &[UserMovie], user_series: &[UserSeries]) {
-    let mut user_productions = Vec::new();
-    for movie in user_movies {
-        let new_movie = movie.to_owned();
-        user_productions.push(UserProduction::UserMovie(new_movie));
-    }
-
-    for series in user_series {
-        let new_series = series.to_owned();
-        user_productions.push(UserProduction::UserSeries(new_series));
-    }
-
-    let Ok(json) = serde_json::to_string_pretty(&user_productions) else {
-        eprintln!("ERROR: Migration failed");
-        return;
-    };
-
-    if let Err(err) = fs::write("res/user_prod_new.json", json) {
-        eprintln!("ERROR: Migration failed: {err}");
+    let positions_arr = json["positions"].take();
+    // Allow null for now
+    let prod_positions = if Value::Null == positions_arr {
+        vec![]
     } else {
-        println!("Migration finished");
-    }
+        match serde_json::from_value(positions_arr){
+            Ok(vec_value) => vec_value,
+            Err(err) => return Err(err.to_string()),
+        }
+    };
+
+    let data = UserData {
+        user_series,
+        user_movies,
+        prod_positions
+    };
+    Ok(data)
 }
+
 
 /*
 Serialization:
@@ -149,6 +141,10 @@ user_prod.json
     "movies":[
         {UserMovie}
         {UserMovie}
+    ]
+    "positions":[
+        {ProdEntry}
+        {ProdEntry}
     ]
 }
 */
