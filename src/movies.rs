@@ -68,7 +68,7 @@ pub struct ProductionCompany {
     pub logo_path: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserMovie {
     pub movie: Movie,
     pub user_rating: f32,

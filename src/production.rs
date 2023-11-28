@@ -2,7 +2,7 @@ use crate::movies::{Movie, UserMovie};
 use crate::series::{SearchedSeries, Series, UserSeries};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::fs::File;
+use std::fs::{File, self};
 use std::io::{BufReader, Write};
 
 #[allow(dead_code)]
@@ -102,9 +102,40 @@ pub fn deserialize_user_productions(path: Option<String>) -> Result<(Vec<UserSer
     Ok((user_series, user_movies))
 }
 
-// TODO:
-pub fn deserialize_user_productions_todo() -> Result<Vec<UserProduction>, String> {
-    todo!();
+pub fn deserialize_user_productions_new(path: &str) -> Result<Vec<UserProduction>, &str> {
+    let Ok(json_string) = fs::read_to_string(path) else {
+        return Err("Failed to load the migrated data file");
+    };
+
+    let Ok(user_productions) = serde_json::from_str::<Vec<UserProduction>>(&json_string) else {
+        return Err("Failed to deserialize the migrated json data")
+    };
+
+    Ok(user_productions)
+}
+
+pub fn migrate_data(user_movies: &[UserMovie], user_series: &[UserSeries]) {
+    let mut user_productions = Vec::new();
+    for movie in user_movies {
+        let new_movie = movie.to_owned();
+        user_productions.push(UserProduction::UserMovie(new_movie));
+    }
+
+    for series in user_series {
+        let new_series = series.to_owned();
+        user_productions.push(UserProduction::UserSeries(new_series));
+    }
+
+    let Ok(json) = serde_json::to_string_pretty(&user_productions) else {
+        eprintln!("ERROR: Migration failed");
+        return;
+    };
+
+    if let Err(err) = fs::write("res/user_prod_new.json", json) {
+        eprintln!("ERROR: Migration failed: {err}");
+    } else {
+        println!("Migration finished");
+    }
 }
 
 /*

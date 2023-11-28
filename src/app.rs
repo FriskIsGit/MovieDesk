@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::jobs::Job;
 use crate::movies::{Movie, UserMovie};
-use crate::production::{ListOrdering, EntryType, ListEntry, Production};
+use crate::production::{ListOrdering, EntryType, ListEntry, Production, UserProduction};
 use crate::series::{SearchedSeries, UserSeries};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{LicenseView, MovieView, SeriesView, TrailersView};
@@ -42,6 +42,7 @@ pub struct MovieApp {
     // TODO: Unify those two into one "UserProduction" enum to allow ordering of the central list (CentralListOrdering::UserDefined)
     user_movies: Vec<UserMovie>,
     user_series: Vec<UserSeries>,
+    user_productions: Vec<UserProduction>,
     selection: Selection,
 
     toasts: Toasts,
@@ -79,6 +80,7 @@ impl MovieApp {
 
             user_movies: Vec::new(),
             user_series: Vec::new(),
+            user_productions: Vec::new(),
 
             selection: Selection::new(),
 
@@ -294,6 +296,32 @@ impl MovieApp {
                 self.user_movies = user_prods.1;
                 self.toasts.add(Toast {
                     text: "Loaded productions".into(),
+                    kind: ToastKind::Success,
+                    options: ToastOptions::default()
+                        .duration_in_seconds(2.5)
+                        .show_progress(true)
+                        .show_icon(true),
+                });
+            }
+            Err(msg) => {
+                eprintln!("{}", msg);
+                self.toasts.add(Toast {
+                    text: msg.into(),
+                    kind: ToastKind::Error,
+                    options: ToastOptions::default()
+                        .duration_in_seconds(3.5)
+                        .show_progress(true)
+                        .show_icon(true),
+                });
+            }
+        }
+
+        let outcome = production::deserialize_user_productions_new("res/user_prod_new.json");
+        match outcome {
+            Ok(user_prods) => {
+                self.user_productions = user_prods;
+                self.toasts.add(Toast {
+                    text: "Loaded migrated productions".into(),
                     kind: ToastKind::Success,
                     options: ToastOptions::default()
                         .duration_in_seconds(2.5)
@@ -863,9 +891,10 @@ impl MovieApp {
 
                     if ui.button("Load data from file").clicked() {}
 
-                    let migrate_data = ui.add_enabled(false, egui::Button::new("Migrate data"));
+                    let migrate_data = ui.add_enabled(true, egui::Button::new("Migrate data"));
                     if migrate_data.clicked() {
-                        println!("There is nothing to migrate");
+                        production::migrate_data(&self.user_movies, &self.user_series);
+                        // unreachable!("There is nothing to migrate. You shouldn't be able to click this by the way...");
                     }
                 });
 
@@ -1202,7 +1231,3 @@ impl Selection {
         self.episode.expect("Selection episode is None")
     }
 }
-
-
-
-

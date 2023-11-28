@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Series {
     pub id: u32,
     pub name: String,
@@ -58,7 +58,7 @@ pub struct SearchedSeries {
     pub adult: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserSeries {
     pub series: Series,
     pub user_rating: f32,
@@ -98,7 +98,7 @@ pub struct SeriesDetails {
     pub seasons: Vec<Season>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Season {
     pub air_date: Option<String>,
     pub episode_count: u32,
@@ -150,7 +150,7 @@ pub struct Episode {
     pub vote_average: f32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SeasonNotes {
     pub note: String,
     pub user_rating: f32,
