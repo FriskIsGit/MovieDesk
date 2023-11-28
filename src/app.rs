@@ -39,6 +39,7 @@ pub struct MovieApp {
     searched_string: String,
 
     // Right panel
+    // TODO: Unify those two into one "UserProduction" enum to allow ordering of the central list (CentralListOrdering::UserDefined)
     user_movies: Vec<UserMovie>,
     user_series: Vec<UserSeries>,
     selection: Selection,
@@ -128,6 +129,40 @@ impl MovieApp {
     fn central_list_add_series(&mut self, series: &UserSeries) {
         let entry = ListEntry::from_series(series);
         self.central_user_list.push(entry);
+        self.central_draw_list_update();
+    }
+
+    fn central_user_list_move_down(&mut self, index: usize) {
+        if !matches!(self.central_ordering, CentralListOrdering::UserDefined) {
+            return;
+        } 
+
+        if self.searched_string.len() != 0 {
+            return;
+        }
+
+        if index >= self.central_user_list.len() - 1 {
+            return;
+        }
+
+        self.central_user_list.swap(index, index + 1);
+        self.central_draw_list_update();
+    }
+
+    fn central_user_list_move_up(&mut self, index: usize) {
+        if !matches!(self.central_ordering, CentralListOrdering::UserDefined) {
+            return;
+        } 
+
+        if self.searched_string.len() != 0 {
+            return;
+        }
+
+        if index <= 0 {
+            return;
+        }
+
+        self.central_user_list.swap(index, index - 1);
         self.central_draw_list_update();
     }
 
@@ -542,6 +577,7 @@ impl MovieApp {
                 // break;
             }
 
+
             // Drawing and handling the "move down" button.
             let down_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(58.0, -5.0);
             let down_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
@@ -553,17 +589,15 @@ impl MovieApp {
                 egui::Sense::click(),
             );
 
+            // TODO: Grey-out button if you cant move up the entry.
             if down_button.is_pointer_button_down_on() {
                 let down_rect = down_button_rect.expand(1.0);
-                ui.painter()
-                    .rect(down_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
+                ui.painter().rect(down_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
             } else if down_button.hovered() {
                 let down_rect = down_button_rect.expand(1.0);
-                ui.painter()
-                    .rect(down_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
+                ui.painter().rect(down_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
             } else {
-                ui.painter()
-                    .rect(down_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                ui.painter().rect(down_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
             }
 
             let down_icon_pos = down_button_rect.min
@@ -582,8 +616,7 @@ impl MovieApp {
             );
 
             if down_button.clicked() {
-                // TODO: Add bound checking + entries from central_user_list should be swapped insted of this.
-                self.central_draw_list.swap(i, i + 1);
+                self.central_user_list_move_down(i);
             }
 
             // Drawing and handling the "move up" button.
@@ -597,6 +630,7 @@ impl MovieApp {
                 egui::Sense::click(),
             );
 
+            // TODO: Grey-out button if you cant move down the entry.
             if up_button.is_pointer_button_down_on() {
                 let up_rect = up_button_rect.expand(1.0);
                 ui.painter().rect(up_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
@@ -622,8 +656,7 @@ impl MovieApp {
             );
 
             if up_button.clicked() {
-                // TODO: Add bound checking + entries from central_user_list should be swapped instead of this.
-                self.central_draw_list.swap(i, i - 1);
+                self.central_user_list_move_up(i);
             }
         }
     }
@@ -1141,5 +1174,7 @@ impl Selection {
         self.episode.expect("Selection episode is None")
     }
 }
+
+
 
 

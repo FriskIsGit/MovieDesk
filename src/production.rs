@@ -13,6 +13,12 @@ pub enum Production {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum UserProduction {
+    UserMovie(UserMovie),
+    UserSeries(UserSeries),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ProductionIds {
     pub id: u32,
     pub facebook_id: Option<String>,
@@ -94,6 +100,11 @@ pub fn deserialize_user_productions(path: Option<String>) -> Result<(Vec<UserSer
         Err(err) => return Err(err.to_string()),
     };
     Ok((user_series, user_movies))
+}
+
+// TODO:
+pub fn deserialize_user_productions_todo() -> Result<Vec<UserProduction>, String> {
+    todo!();
 }
 
 /*
