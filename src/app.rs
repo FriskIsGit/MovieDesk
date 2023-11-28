@@ -486,7 +486,7 @@ impl MovieApp {
             }
 
             let entry_hovered = if let Some(pos) = ctx.pointer_latest_pos() {
-                entry_response.rect.contains(pos)
+                entry_response.rect.contains(pos) && ui.ui_contains_pointer()
             } else {
                 false
             };
