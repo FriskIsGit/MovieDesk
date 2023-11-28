@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::jobs::Job;
 use crate::movies::{Movie, UserMovie};
-use crate::production::{CentralListOrdering, EntryType, ListEntry, Production};
+use crate::production::{ListOrdering, EntryType, ListEntry, Production};
 use crate::series::{SearchedSeries, UserSeries};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{LicenseView, MovieView, SeriesView, TrailersView};
@@ -33,7 +33,7 @@ pub struct MovieApp {
     // buttons are clicked), shrinking and expanding (when used inputs name of the production in a central panel
     // search bar). This is the list that is used for central panel drawing.
     central_draw_list: Vec<ListEntry>,
-    central_ordering: CentralListOrdering,
+    central_ordering: ListOrdering,
 
     // TODO: Add searchbar and fuzzy searching logic at some point.
     searched_string: String,
@@ -58,16 +58,16 @@ pub struct MovieApp {
 }
 
 impl MovieApp {
-    pub fn new(ctx: &egui::Context, mut config: Config) -> Self {
+    pub fn new(ctx: &egui::Context, config: Config) -> Self {
         let visuals = Visuals::dark();
         ctx.set_visuals(visuals);
 
         // Implement dynamic scale changing?
         ctx.set_pixels_per_point(1.5);
 
-        // YOINK! We are not going to need the this here anymore.
-        // The api key is only used by TheMovieDB.
-        let key = std::mem::take(&mut config.api_key);
+        // NOTE: TheMovieDB should hold the api_key, this struct is dumb!
+        //       #AbolishTheMovieDB
+        let key = config.api_key.clone();
 
         let movie_db = TheMovieDB::new(key, config.enable_cache);
         Self {
@@ -85,7 +85,7 @@ impl MovieApp {
             selected_entry: EntryType::None,
             central_user_list: Vec::new(),
             central_draw_list: Vec::new(),
-            central_ordering: CentralListOrdering::UserDefined,
+            central_ordering: ListOrdering::UserDefined,
             searched_string: String::new(),
 
             toasts: Toasts::new()
@@ -133,7 +133,7 @@ impl MovieApp {
     }
 
     fn central_user_list_move_down(&mut self, index: usize) {
-        if !matches!(self.central_ordering, CentralListOrdering::UserDefined) {
+        if !matches!(self.central_ordering, ListOrdering::UserDefined) {
             return;
         } 
 
@@ -141,7 +141,7 @@ impl MovieApp {
             return;
         }
 
-        if index >= self.central_user_list.len() - 1 {
+        if index + 1 >= self.central_user_list.len() {
             return;
         }
 
@@ -150,7 +150,7 @@ impl MovieApp {
     }
 
     fn central_user_list_move_up(&mut self, index: usize) {
-        if !matches!(self.central_ordering, CentralListOrdering::UserDefined) {
+        if !matches!(self.central_ordering, ListOrdering::UserDefined) {
             return;
         } 
 
@@ -173,12 +173,12 @@ impl MovieApp {
         self.central_draw_list = self.central_user_list.clone();
 
         match self.central_ordering {
-            CentralListOrdering::UserDefined => {}
-            CentralListOrdering::Alphabetic => self.central_draw_list.sort_by(|a, b| a.name.cmp(&b.name)),
-            CentralListOrdering::RatingAscending => self
+            ListOrdering::UserDefined => {}
+            ListOrdering::Alphabetic => self.central_draw_list.sort_by(|a, b| a.name.cmp(&b.name)),
+            ListOrdering::RatingAscending => self
                 .central_draw_list
                 .sort_by(|a, b| a.rating.partial_cmp(&b.rating).unwrap()),
-            CentralListOrdering::RatingDescending => self
+            ListOrdering::RatingDescending => self
                 .central_draw_list
                 .sort_by(|a, b| b.rating.partial_cmp(&a.rating).unwrap()),
         }
@@ -415,22 +415,22 @@ impl MovieApp {
 
                 ui.with_layout(egui::Layout::right_to_left(Align::Max), |ui| {
                     if ui.button("U").on_hover_text("User defined ordering").clicked() {
-                        self.central_ordering = CentralListOrdering::UserDefined;
+                        self.central_ordering = ListOrdering::UserDefined;
                         self.central_draw_list_update();
                     }
 
                     if ui.button("A").on_hover_text("Alphabetic ordering").clicked() {
-                        self.central_ordering = CentralListOrdering::Alphabetic;
+                        self.central_ordering = ListOrdering::Alphabetic;
                         self.central_draw_list_update();
                     }
 
                     if ui.button("^").on_hover_text("Ascending rating ordering").clicked() {
-                        self.central_ordering = CentralListOrdering::RatingAscending;
+                        self.central_ordering = ListOrdering::RatingAscending;
                         self.central_draw_list_update();
                     }
 
                     if ui.button("v").on_hover_text("Descending rating ordering").clicked() {
-                        self.central_ordering = CentralListOrdering::RatingDescending;
+                        self.central_ordering = ListOrdering::RatingDescending;
                         self.central_draw_list_update();
                     }
                 });
@@ -844,6 +844,14 @@ impl MovieApp {
         top.resizable(true).show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
+                    if ui.button("Save config").clicked() {
+                        self.config.save("res/config.json");
+                    }
+
+                    if ui.button("Load config").clicked() {
+                        self.config = Config::load("res/config.json");
+                    }
+
                     // display success/failure message somewhere once finished below?
                     if ui.button("Save data").clicked() {
                         self.save_data();
@@ -858,9 +866,11 @@ impl MovieApp {
 
                 ui.menu_button("View", |ui| {
                     // why is this so laggy?
+                    // skill issue...
                     if ui.button("PPP +0.01").clicked() {
                         ctx.set_pixels_per_point(ctx.pixels_per_point() + 0.01);
                     }
+
                     if ui.button("PPP -0.01").clicked() {
                         ctx.set_pixels_per_point(ctx.pixels_per_point() - 0.01);
                     }
@@ -869,30 +879,43 @@ impl MovieApp {
                 ui.menu_button("Settings", |ui| {
                     /* The settings menu:
                         - [ ] Auto-save
-                            - [ ] Enable/Disable
+                            - [x] Enable/Disable
                             - [ ] Update interval
                         - [ ] Sync
                             - [ ] Sync to server
                             - [ ] Sync from server
-                        - [ ] Enable/Disable local caching
-                        - [ ] Set tmdb token
-                        - [ ] Set default browser
+                        - [x] Enable/Disable local caching
+                        - [x] Set tmdb token
+                        - [x] Set default browser
+                        - [ ] Autoload on startup
+                        - [ ] Autosave on exit
                     */
 
-                    if ui.button("Auto-save").clicked() {
-                        todo!()
+                    ui.menu_button("Set TMDB token", |ui| {
+                        // NOTE: This won't work because we are passing the API key to TheMovieDb struct
+                        ui.text_edit_singleline(&mut self.config.api_key);
+                    });
+
+                    ui.menu_button("Set default browser", |ui| {
+                        ui.text_edit_singleline(&mut self.config.browser_name);
+                    });
+
+                    let autosave_label = if self.config.autosave {
+                        "Disable auto-save"
+                    } else {
+                        "Enable auto-save"
+                    };
+                    if ui.button(autosave_label).clicked() {
+                        self.config.autosave = !self.config.autosave;
                     }
 
-                    if ui.button("Enable caching").clicked() {
-                        todo!()
-                    }
-
-                    if ui.button("Set TMDB token").clicked() {
-                        todo!()
-                    }
-
-                    if ui.button("Set default browser").clicked() {
-                        todo!()
+                    let caching_label = if self.config.enable_cache {
+                        "Disable caching"
+                    } else {
+                        "Enable caching"
+                    };
+                    if ui.button(caching_label).clicked() {
+                        self.config.enable_cache = !self.config.enable_cache;
                     }
 
                     if ui.button("Sync").clicked() {

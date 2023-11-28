@@ -18,7 +18,7 @@ impl eframe::App for MovieApp {
 
 pub fn run_app() {
     println!("Running!");
-    let config = Config::read_config("res/config.json");
+    let config = Config::load("res/config.json");
 
     let options = eframe::NativeOptions {
         min_window_size: Some(Vec2::new(30.0, 30.0)),

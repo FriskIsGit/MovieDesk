@@ -184,7 +184,7 @@ impl ListEntry {
     }
 }
 
-pub enum CentralListOrdering {
+pub enum ListOrdering {
     // This will require to store the list separately
     UserDefined,
     Alphabetic,
