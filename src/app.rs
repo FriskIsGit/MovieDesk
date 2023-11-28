@@ -862,6 +862,11 @@ impl MovieApp {
                     }
 
                     if ui.button("Load data from file").clicked() {}
+
+                    let migrate_data = ui.add_enabled(false, egui::Button::new("Migrate data"));
+                    if migrate_data.clicked() {
+                        println!("There is nothing to migrate");
+                    }
                 });
 
                 ui.menu_button("View", |ui| {
