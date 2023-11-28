@@ -65,7 +65,7 @@ impl MovieApp {
         // Implement dynamic scale changing?
         ctx.set_pixels_per_point(1.5);
 
-        // NOTE: TheMovieDB should hold the api_key, this struct is dumb!
+        // NOTE: TheMovieDB SHOULDN'T hold the api_key, this struct is dumb!
         //       #AbolishTheMovieDB
         let key = config.api_key.clone();
 
