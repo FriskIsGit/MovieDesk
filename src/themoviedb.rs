@@ -55,14 +55,15 @@ impl TheMovieDB {
 
         Job::new(move || {
             println!("Executing request in search_production");
-            let Ok(response) = request.call() else {
-                panic!("Error on sending request");
+            let response = match request.call() {
+                Ok(success) => {
+                    success
+                }
+                Err(err) => {
+                    println!("{}", err.to_string());
+                    return Vec::new();
+                }
             };
-
-            let status = response.status();
-            if status != 200 {
-                println!("status: {}", status)
-            }
 
             let json_response = response.into_string().unwrap().take();
 
