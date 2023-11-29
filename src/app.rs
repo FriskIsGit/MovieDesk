@@ -67,7 +67,7 @@ impl MovieApp {
 
         // NOTE: TheMovieDB SHOULDN'T hold the api_key, this struct is dumb!
         //       #AbolishTheMovieDB
-        let key = config.api_key.clone();
+        let key = config.access_token.clone();
         let movie_db = TheMovieDB::new(key, config.enable_cache);
 
         Self {
@@ -909,7 +909,18 @@ impl MovieApp {
                     }
 
                     if ui.button("Save config").clicked() {
-                        self.config.save("res/config.json");
+                        if self.config.validate_access_token() {
+                            self.config.save("res/config.json");
+                        } else {
+                            self.toasts.add(Toast{
+                                kind: ToastKind::Error,
+                                text: "Read access token should contain 211 characters and include 2 dots".into(),
+                                options: ToastOptions::default()
+                                    .duration_in_seconds(3.5)
+                                    .show_progress(true)
+                                    .show_icon(true),
+                            });
+                        }
                     }
 
                     if ui.button("Load config").clicked() {
@@ -946,7 +957,7 @@ impl MovieApp {
 
                     ui.menu_button("Set TMDB token", |ui| {
                         // NOTE: This won't work because we are passing the API key to TheMovieDb struct
-                        ui.text_edit_singleline(&mut self.config.api_key);
+                        ui.text_edit_singleline(&mut self.config.access_token);
                     });
 
                     ui.menu_button("Set default browser", |ui| {

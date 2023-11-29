@@ -24,7 +24,7 @@ pub enum Width {
 }
 
 pub struct TheMovieDB {
-    api_key: String,
+    access_token: String,
     agent: Agent,
     // pub use_cache: bool,
     // cache object outputs to avoid making multiple requests for the same data
@@ -35,7 +35,7 @@ pub struct TheMovieDB {
 impl TheMovieDB {
     pub fn new(key: String, _use_cache: bool) -> Self {
         Self {
-            api_key: key,
+            access_token: key,
             agent: AgentBuilder::new().timeout(Duration::from_secs(15)).build(),
             // use_cache,
             // query_to_prod: VecMap::new(),
@@ -46,7 +46,7 @@ impl TheMovieDB {
         self.agent
             .get(url)
             .set("Accept", "application/json")
-            .set("Authorization", &format!("Bearer {}", self.api_key))
+            .set("Authorization", &format!("Bearer {}", self.access_token))
     }
 
     pub fn search_production(&mut self, query: String) -> Job<Vec<Production>> {

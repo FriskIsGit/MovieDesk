@@ -5,7 +5,7 @@ use std::fs;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct Config {
-    pub api_key: String,
+    pub access_token: String,
     pub include_adult: bool,
     pub enable_cache: bool,
     pub load_on_startup: bool,
@@ -17,7 +17,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            api_key: "<Replace this with your TMDB api key>".to_string(),
+            access_token: "<Replace this with your TMDB access token>".to_string(),
             include_adult: false,
             enable_cache: false,
             load_on_startup: true,
@@ -52,5 +52,18 @@ impl Config {
 
             config
         }
+    }
+
+    pub fn validate_access_token(&self) -> bool {
+        if self.access_token.len() != 211 {
+            return false
+        }
+        let mut dots = 0;
+        for byte in self.access_token.bytes() {
+            if byte == b'.' {
+                dots += 1
+            }
+        }
+        return dots == 2
     }
 }

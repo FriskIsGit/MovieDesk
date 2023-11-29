@@ -1,5 +1,5 @@
 {
-  "api_key": "eyJhbGciOiJIUzI1NiJ9",
+  "access_token": "eyJhbGciOiJIUzI1NiJ9",
   "include_adult": false,
   "enable_cache": true,
   "load_on_startup": true,
