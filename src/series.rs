@@ -67,9 +67,9 @@ pub struct UserSeries {
 }
 
 impl UserSeries {
-    pub fn new(searched_series: &SearchedSeries, details: SeriesDetails) -> Self {
+    pub fn new(series: Series) -> Self {
         let mut notes = Vec::new();
-        for season in &details.seasons {
+        for season in &series.seasons {
             let mut episode_notes = Vec::new();
             for _ in 0..season.episode_count {
                 episode_notes.push(String::new())
@@ -80,7 +80,7 @@ impl UserSeries {
         }
 
         Self {
-            series: Series::from(searched_series, details),
+            series,
             note: String::new(),
             user_rating: 0.0,
             season_notes: notes,

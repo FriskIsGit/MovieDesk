@@ -74,3 +74,13 @@ pub struct UserMovie {
     pub user_rating: f32,
     pub note: String,
 }
+
+impl UserMovie {
+    pub fn new(movie: Movie) -> Self {
+        Self {
+            movie,
+            note: String::new(),
+            user_rating: 0.0,
+        }
+    }
+}

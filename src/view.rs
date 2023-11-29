@@ -113,7 +113,7 @@ impl SeriesView {
                 // TODO: don't wrap in ScrollArea just leave bare grid
             }
 
-            egui::ScrollArea::new([true; 2]).show(ui, |ui| {
+            egui::ScrollArea::new([true, true]).show(ui, |ui| {
                 egui::Grid::new("seasons_grid").max_col_width(100.0).show(ui, |ui| {
                     for (i, season) in series_details.seasons.iter().enumerate() {
                         ui.vertical(|ui| {

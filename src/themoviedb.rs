@@ -16,11 +16,11 @@ const IMDB_FIND: &str = "https://www.imdb.com/find/?q=";
 
 #[allow(dead_code)]
 pub enum Width {
-    W200,
-    W300,
-    W400,
+    Original,
     W500,
-    ORIGINAL,
+    W400,
+    W300,
+    W200,
 }
 
 pub struct TheMovieDB {
@@ -96,7 +96,7 @@ impl TheMovieDB {
             Width::W300 => "w300",
             Width::W400 => "w400",
             Width::W500 => "w500",
-            Width::ORIGINAL => "original",
+            Width::Original => "original",
         };
         format!("{IMAGE_URL}{size}{poster}")
     }

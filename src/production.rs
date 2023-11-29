@@ -1,14 +1,12 @@
 use crate::movies::{Movie, UserMovie};
-use crate::series::{SearchedSeries, Series, UserSeries};
+use crate::series::{SearchedSeries, UserSeries};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::fs::{File};
+use std::fs::File;
 use std::io::{BufReader, Write};
 
-#[allow(dead_code)]
 pub enum Production {
     Movie(Movie),
-    Series(Series),
     SearchedSeries(SearchedSeries),
 }
 
@@ -53,7 +51,7 @@ pub struct UserData {
     pub user_movies: Vec<UserMovie>,
     pub prod_positions: Vec<ProdEntry>,
 }
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub struct ProdEntry {
     pub is_movie: bool,
     pub id: u32,

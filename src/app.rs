@@ -1,12 +1,12 @@
 use crate::config::Config;
 use crate::jobs::Job;
 use crate::movies::{Movie, UserMovie};
-use crate::production::{ListOrdering, EntryType, ListEntry, Production, UserData, ProdEntry};
-use crate::series::{SearchedSeries, UserSeries};
+use crate::production::{ListOrdering, EntryType, ListEntry, Production, ProdEntry};
+use crate::series::{SearchedSeries, UserSeries, Series};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{LicenseView, MovieView, SeriesView, TrailersView};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_map};
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -39,7 +39,6 @@ pub struct MovieApp {
     searched_string: String,
 
     // Right panel
-    // TODO: Unify those two to allow ordering of the central list (CentralListOrdering::UserDefined)
     user_movies: Vec<UserMovie>,
     user_series: Vec<UserSeries>,
     prod_positions: Vec<ProdEntry>,
@@ -69,8 +68,8 @@ impl MovieApp {
         // NOTE: TheMovieDB SHOULDN'T hold the api_key, this struct is dumb!
         //       #AbolishTheMovieDB
         let key = config.api_key.clone();
-
         let movie_db = TheMovieDB::new(key, config.enable_cache);
+
         Self {
             search: String::new(),
             show_adult_content: config.include_adult,
@@ -106,17 +105,25 @@ impl MovieApp {
     fn central_list_reload(&mut self) {
         self.central_user_list.clear();
 
-        // This is not that great. When loading data, custom list order created by the user gets disregarded.
-        // Maybe the order of the list should also be saved somehow?
-
-        for series in &self.user_series {
-            let entry = ListEntry::from_series(series);
-            self.central_user_list.push(entry);
-        }
-
-        for movie in &self.user_movies {
-            let entry = ListEntry::from_movie(&movie.movie);
-            self.central_user_list.push(entry);
+        for i in 0..self.prod_positions.len() {
+            let pos = self.prod_positions[i];
+            if pos.is_movie {
+                for i in 0..self.user_movies.len() {
+                    //                                    cringe
+                    let movie = self.user_movies[i].movie.clone();
+                    if movie.id == pos.id {
+                        self.central_list_add_movie(&movie);
+                    }
+                }
+            } else {
+                for i in 0..self.user_series.len() {
+                    //                               cringe
+                    let series = self.user_series[i].clone();
+                    if series.series.id == pos.id {
+                        self.central_list_add_series(&series);
+                    }
+                }
+            }
         }
 
         self.central_draw_list_update();
@@ -139,7 +146,7 @@ impl MovieApp {
             return;
         } 
 
-        if self.searched_string.len() != 0 {
+        if !self.searched_string.is_empty() {
             return;
         }
 
@@ -148,6 +155,7 @@ impl MovieApp {
         }
 
         self.central_user_list.swap(index, index + 1);
+        self.prod_positions.swap(index, index + 1);
         self.central_draw_list_update();
     }
 
@@ -156,15 +164,16 @@ impl MovieApp {
             return;
         } 
 
-        if self.searched_string.len() != 0 {
+        if !self.searched_string.is_empty() {
             return;
         }
 
-        if index <= 0 {
+        if index == 0 {
             return;
         }
 
         self.central_user_list.swap(index, index - 1);
+        self.prod_positions.swap(index, index - 1);
         self.central_draw_list_update();
     }
 
@@ -320,7 +329,33 @@ impl MovieApp {
         self.central_list_reload();
     }
 
+    pub fn add_movie(&mut self, movie: Movie) {
+        let exists = self.user_movies.iter()
+            .any(|user_movie| user_movie.movie.id == movie.id);
+
+        if !exists {
+            self.prod_positions.push(ProdEntry::new(true, movie.id));
+            let new_data = UserMovie::new(movie.clone());
+            self.central_list_add_movie(&movie);
+            self.user_movies.push(new_data);
+        }
+    }
+
+
+    pub fn add_series(&mut self, series: Series) {
+        let exists = self.user_series.iter()
+            .any(|user_series| user_series.series.id == series.id);
+
+        if !exists {
+            self.prod_positions.push(ProdEntry::new(false, series.id));
+            let new_data = UserSeries::new(series);
+            self.central_list_add_series(&new_data);
+            self.user_series.push(new_data);
+        }
+    }
+
     pub fn setup(&mut self) {
+
         // Start with the default fonts (we will be adding to them rather than replacing them).
         let mut fonts = egui::FontDefinitions::default();
 
@@ -856,10 +891,20 @@ impl MovieApp {
                         self.load_data();
                     }
 
-                    if ui.button("Load data from file").clicked() {}
+                    if ui.button("Load data from file").clicked() {
+                        todo!();
+                    }
 
-                    let migrate_data = ui.add_enabled(false, egui::Button::new("Migrate data"));
+                    let migrate_data = ui.add_enabled(true, egui::Button::new("Migrate data"));
                     if migrate_data.clicked() {
+                        for series in &self.user_series {
+                            self.prod_positions.push(ProdEntry::new(false, series.series.id));
+                        }
+
+                        for movie in &self.user_movies {
+                            self.prod_positions.push(ProdEntry::new(true, movie.movie.id));
+                        }
+
                         // unreachable!("There is nothing to migrate. You shouldn't be able to click this by the way...");
                     }
 
@@ -956,21 +1001,7 @@ impl MovieApp {
             let poster = ui.add_sized([60.0, 100.0], image).interact(egui::Sense::click());
             poster.context_menu(|ui| {
                 if ui.button("Add movie").clicked() {
-                    // let mut user_productions = self.user_productions.borrow_mut();
-                    let exists = self
-                        .user_movies
-                        .iter()
-                        .any(|user_movie| user_movie.movie.id == movie.id);
-
-                    if !exists {
-                        let new_data = UserMovie {
-                            movie: movie.clone(),
-                            note: String::new(),
-                            user_rating: 0.0,
-                        };
-                        self.user_movies.push(new_data);
-                        self.central_list_add_movie(movie);
-                    }
+                    self.add_movie(movie.clone());
                     ui.close_menu()
                 }
                 //change name?: xpanded view, about, more, view seasons, view more, view details,
@@ -1004,7 +1035,7 @@ impl MovieApp {
 
                 if ui.button("Download poster").clicked() && movie.poster_path.is_some() {
                     let poster = movie.poster_path.as_ref().unwrap();
-                    let resource = TheMovieDB::get_full_poster_url(poster, Width::ORIGINAL);
+                    let resource = TheMovieDB::get_full_poster_url(poster, Width::Original);
                     self.movie_db.download_poster(&resource, &poster[1..]);
                 }
 
@@ -1027,14 +1058,15 @@ impl MovieApp {
 
         if movie.overview.len() > 200 {
             // NOTE: It's not that bad now!
-            if self.description_cache.contains_key(&movie.id) {
-                let description = self.description_cache.get(&movie.id).expect("Not cached");
-                ui.label(description);
-            } else {
+            //       (it still is very bad...)
+            if let hash_map::Entry::Vacant(e) = self.description_cache.entry(movie.id) {
                 let slice = &movie.overview.as_bytes()[..200];
                 let description = format!("{}...", String::from_utf8_lossy(slice).trim());
                 ui.label(&description);
-                self.description_cache.insert(movie.id, description);
+                e.insert(description);
+            } else {
+                let description = self.description_cache.get(&movie.id).expect("Not cached");
+                ui.label(description);
             }
         } else {
             ui.label(&movie.overview);
@@ -1060,18 +1092,9 @@ impl MovieApp {
             let poster = ui.add_sized([60.0, 100.0], image).interact(egui::Sense::click());
             poster.context_menu(|ui| {
                 if ui.button("Add series").clicked() {
-                    // let mut user_productions = self.user_productions.borrow_mut();
-                    let exists = self
-                        .user_series
-                        .iter()
-                        .any(|user_series| user_series.series.id == series.id);
-
-                    if !exists {
-                        let details = self.movie_db.get_series_details_now(series.id);
-                        let new_data = UserSeries::new(series, details);
-                        self.central_list_add_series(&new_data);
-                        self.user_series.push(new_data);
-                    }
+                    let details = self.movie_db.get_series_details_now(series.id);
+                    let new_data = Series::from(series, details);
+                    self.add_series(new_data);
                     ui.close_menu()
                 }
 
@@ -1105,7 +1128,7 @@ impl MovieApp {
 
                 if ui.button("Download poster").clicked() && series.poster_path.is_some() {
                     let poster = series.poster_path.clone().unwrap().to_owned();
-                    let resource = TheMovieDB::get_full_poster_url(&poster, Width::ORIGINAL);
+                    let resource = TheMovieDB::get_full_poster_url(&poster, Width::Original);
                     self.movie_db.download_poster(&resource, &poster[1..]);
                 }
 
@@ -1128,14 +1151,15 @@ impl MovieApp {
 
         if series.overview.len() > 200 {
             // NOTE: It's not that bad now!
-            if self.description_cache.contains_key(&(series.id + 1)) {
-                let description = self.description_cache.get(&(series.id + 1)).expect("Not cached");
-                ui.label(description);
-            } else {
+            //       (it still is very bad...)
+            if let hash_map::Entry::Vacant(e) = self.description_cache.entry(series.id + 1) {
                 let slice = &series.overview.as_bytes()[..200];
                 let description = format!("{}...", String::from_utf8_lossy(slice).trim());
                 ui.label(&description);
-                self.description_cache.insert(series.id + 1, description);
+                e.insert(description);
+            } else {
+                let description = self.description_cache.get(&(series.id + 1)).expect("Not cached");
+                ui.label(description);
             }
         } else {
             ui.label(&series.overview);
@@ -1163,7 +1187,6 @@ impl MovieApp {
                 match prod {
                     Production::Movie(ref movie) => self.draw_movie_entry(ui, movie),
                     Production::SearchedSeries(ref series) => self.draw_series_entry(ui, series),
-                    _ => {}
                 }
             }
         });
