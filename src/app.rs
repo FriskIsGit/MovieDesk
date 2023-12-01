@@ -1185,7 +1185,8 @@ impl MovieApp {
                 ui.scroll_to_cursor(Some(Align::Min));
             }
 
-            if let Some(productions) = self.fetch_productions_job.poll_owned() {
+            if let Some(mut productions) = self.fetch_productions_job.poll_owned() {
+                self.sort_productions_by_popularity(&mut productions);
                 let productions: Rc<[Production]> = productions.into();
                 self.search_productions = Some(productions);
             }
@@ -1200,6 +1201,22 @@ impl MovieApp {
                     Production::SearchedSeries(ref series) => self.draw_series_entry(ui, series),
                 }
             }
+        });
+    }
+
+    fn sort_productions_by_popularity(&mut self, productions: &mut Vec<Production>) {
+        productions.sort_by(|e1, e2| {
+            let pop1;
+            let pop2;
+            match e1 {
+                Production::Movie(ref movie1) => pop1 = movie1.popularity,
+                Production::SearchedSeries(ref series1) => pop1 = series1.popularity
+            };
+            match e2 {
+                Production::Movie(ref movie2) => pop2 = movie2.popularity,
+                Production::SearchedSeries(ref series2) => pop2 = series2.popularity
+            }
+            pop2.partial_cmp(&pop1).unwrap()
         });
     }
 }
