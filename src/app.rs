@@ -1206,16 +1206,14 @@ impl MovieApp {
 
     fn sort_productions_by_popularity(&mut self, productions: &mut Vec<Production>) {
         productions.sort_by(|e1, e2| {
-            let pop1;
-            let pop2;
-            match e1 {
-                Production::Movie(ref movie1) => pop1 = movie1.popularity,
-                Production::SearchedSeries(ref series1) => pop1 = series1.popularity
+            let pop1 = match e1 {
+                Production::Movie(ref movie1) =>  movie1.popularity,
+                Production::SearchedSeries(ref series1) => series1.popularity
             };
-            match e2 {
-                Production::Movie(ref movie2) => pop2 = movie2.popularity,
-                Production::SearchedSeries(ref series2) => pop2 = series2.popularity
-            }
+            let pop2 = match e2 {
+                Production::Movie(ref movie2) => movie2.popularity,
+                Production::SearchedSeries(ref series2) => series2.popularity
+            };
             pop2.partial_cmp(&pop1).unwrap()
         });
     }
