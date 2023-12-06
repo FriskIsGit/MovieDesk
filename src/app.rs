@@ -34,8 +34,6 @@ pub struct MovieApp {
     // search bar). This is the list that is used for central panel drawing.
     central_draw_list: Vec<ListEntry>,
     central_ordering: ListOrdering,
-
-    // TODO: Add searchbar and fuzzy searching logic at some point.
     searched_string: String,
 
     // Right panel
@@ -572,129 +570,116 @@ impl MovieApp {
 
             // Maybe this logic could be extracted or maybe a custom widget could be created instead?
 
-            // Drawing and handling the "delete entry" button.
-            let bin_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(30.0, -5.0);
-            let bin_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
-            let bin_button_rect = Rect::from_min_size(bin_button_pos, bin_button_size);
+            { // Drawing and handling the "delete entry" button.
+                let pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(30.0, -5.0);
+                let size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let rect = Rect::from_min_size(pos, size);
 
-            let bin_button = ui.interact(
-                bin_button_rect,
-                egui::Id::new("central_entry_bin_btn"),
-                egui::Sense::click(),
-            );
+                let button = ui.interact(rect, egui::Id::new("central_entry_bin_btn"), egui::Sense::click());
 
-            if bin_button.is_pointer_button_down_on() {
-                let bin_rect = bin_button_rect.expand(1.0);
-                ui.painter().rect(bin_rect, 6.0, egui::Color32::RED, egui::Stroke::NONE);
-            } else if bin_button.hovered() {
-                let bin_rect = bin_button_rect.expand(1.0);
-                ui.painter()
-                    .rect(bin_rect, 6.0, egui::Color32::LIGHT_RED, egui::Stroke::NONE);
-            } else {
-                ui.painter()
-                    .rect(bin_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                if button.is_pointer_button_down_on() {
+                    let rect = rect.expand(1.0);
+                    ui.painter().rect(rect, 6.0, egui::Color32::RED, egui::Stroke::NONE);
+                } else if button.hovered() {
+                    let rect = rect.expand(1.0);
+                    ui.painter().rect(rect, 6.0, egui::Color32::LIGHT_RED, egui::Stroke::NONE);
+                } else {
+                    ui.painter().rect(rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                }
+
+                let icon_pos = rect.min + Vec2::new(rect.width() / 2.0 + 1.0, rect.height() / 2.0 + 1.0);
+                let icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+
+                ui.painter().text(icon_pos, egui::Align2::CENTER_CENTER, "🗑", icon_id, egui::Color32::BLACK);
+
+                if button.clicked() {
+                    self.central_list_remove_entry(self.central_draw_list[i].production_id);
+                }
             }
 
-            let bin_icon_pos = bin_button_rect.min
-                + Vec2::new(
-                    bin_button_rect.width() / 2.0 + 1.0,
-                    bin_button_rect.height() / 2.0 + 1.0,
-                );
-            let bin_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+            { // Drawing and handling the "mark favorite" button.
+                let pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(58.0, -5.0);
+                let size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let rect = Rect::from_min_size(pos, size);
 
-            ui.painter().text(
-                bin_icon_pos,
-                egui::Align2::CENTER_CENTER,
-                "🗑",
-                bin_icon_id,
-                egui::Color32::BLACK,
-            );
+                let button = ui.interact(rect, egui::Id::new("central_entry_fav_btn"), egui::Sense::click());
 
-            if bin_button.clicked() {
-                self.central_list_remove_entry(self.central_draw_list[i].production_id);
-                // break;
+                if button.is_pointer_button_down_on() {
+                    let rect = rect.expand(1.0);
+                    ui.painter().rect(rect, 6.0, egui::Color32::YELLOW, egui::Stroke::NONE);
+                } else if button.hovered() {
+                    let rect = rect.expand(1.0);
+                    ui.painter().rect(rect, 6.0, egui::Color32::LIGHT_YELLOW, egui::Stroke::NONE);
+                } else {
+                    ui.painter().rect(rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                }
+
+                let icon_pos = rect.min + Vec2::new(rect.width() / 2.0, rect.height() / 2.0 - 1.0);
+                let icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+
+                ui.painter().text(icon_pos, egui::Align2::CENTER_CENTER, "⭐", icon_id, egui::Color32::BLACK);
+
+                if button.clicked() {
+                    println!("TODO");
+                }
             }
 
+            //
+            // TODO: Remove up and down button, replace them with drag and drop
+            //       Add button that marks an entry as watched (clock icon).
+            //
+            { // Drawing and handling the "move down" button.
+                let pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(116.0, -5.0);
+                let size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let rect = Rect::from_min_size(pos, size);
 
-            // Drawing and handling the "move down" button.
-            let down_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(58.0, -5.0);
-            let down_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
-            let down_button_rect = Rect::from_min_size(down_button_pos, down_button_size);
+                let button = ui.interact(rect, egui::Id::new("central_entry_down_btn"), egui::Sense::click());
 
-            let down_button = ui.interact(
-                down_button_rect,
-                egui::Id::new("central_entry_down_btn"),
-                egui::Sense::click(),
-            );
+                if button.is_pointer_button_down_on() {
+                    let rect = rect.expand(1.0);
+                    ui.painter().rect(rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
+                } else if button.hovered() {
+                    let rect = rect.expand(1.0);
+                    ui.painter().rect(rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
+                } else {
+                    ui.painter().rect(rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                }
 
-            // TODO: Grey-out button if you cant move up the entry.
-            if down_button.is_pointer_button_down_on() {
-                let down_rect = down_button_rect.expand(1.0);
-                ui.painter().rect(down_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
-            } else if down_button.hovered() {
-                let down_rect = down_button_rect.expand(1.0);
-                ui.painter().rect(down_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
-            } else {
-                ui.painter().rect(down_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                let icon_pos = rect.min + Vec2::new(rect.width() / 2.0, rect.height() / 2.0 - 1.0);
+                let icon_id = egui::FontId::new(16.0, eframe::epaint::FontFamily::Proportional);
+
+                ui.painter().text(icon_pos, egui::Align2::CENTER_CENTER, "🔻", icon_id, egui::Color32::BLACK);
+
+                if button.clicked() {
+                    self.central_user_list_move_down(i);
+                }
             }
 
-            let down_icon_pos = down_button_rect.min
-                + Vec2::new(
-                    down_button_rect.width() / 2.0 + 1.0,
-                    down_button_rect.height() / 2.0 + 1.0,
-                );
-            let down_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+            { // Drawing and handling the "mark favorite" button.
+                let pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(86.0, -5.0);
+                let size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let rect = Rect::from_min_size(pos, size);
 
-            ui.painter().text(
-                down_icon_pos,
-                egui::Align2::CENTER_CENTER,
-                "v",
-                down_icon_id,
-                egui::Color32::BLACK,
-            );
+                let button = ui.interact(rect, egui::Id::new("central_entry_up_btn"), egui::Sense::click());
 
-            if down_button.clicked() {
-                self.central_user_list_move_down(i);
-            }
+                if button.is_pointer_button_down_on() {
+                    let rect = rect.expand(1.0);
+                    ui.painter().rect(rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
+                } else if button.hovered() {
+                    let rect = rect.expand(1.0);
+                    ui.painter().rect(rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
+                } else {
+                    ui.painter().rect(rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                }
 
-            // Drawing and handling the "move up" button.
-            let up_button_pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(86.0, -5.0);
-            let up_button_size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
-            let up_button_rect = Rect::from_min_size(up_button_pos, up_button_size);
+                let icon_pos = rect.min + Vec2::new(rect.width() / 2.0, rect.height() / 2.0 - 1.0);
+                let icon_id = egui::FontId::new(16.0, eframe::epaint::FontFamily::Proportional);
 
-            let up_button = ui.interact(
-                up_button_rect,
-                egui::Id::new("central_entry_up_btn"),
-                egui::Sense::click(),
-            );
+                ui.painter().text(icon_pos, egui::Align2::CENTER_CENTER, "🔺", icon_id, egui::Color32::BLACK);
 
-            // TODO: Grey-out button if you cant move down the entry.
-            if up_button.is_pointer_button_down_on() {
-                let up_rect = up_button_rect.expand(1.0);
-                ui.painter().rect(up_rect, 6.0, egui::Color32::BLUE, egui::Stroke::NONE);
-            } else if up_button.hovered() {
-                let up_rect = up_button_rect.expand(1.0);
-                ui.painter()
-                    .rect(up_rect, 6.0, egui::Color32::LIGHT_BLUE, egui::Stroke::NONE);
-            } else {
-                ui.painter()
-                    .rect(up_button_rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
-            }
-
-            let up_icon_pos =
-                up_button_rect.min + Vec2::new(up_button_rect.width() / 2.0 + 1.0, up_button_rect.height() / 2.0 + 1.0);
-            let up_icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
-
-            ui.painter().text(
-                up_icon_pos,
-                egui::Align2::CENTER_CENTER,
-                "^",
-                up_icon_id,
-                egui::Color32::BLACK,
-            );
-
-            if up_button.clicked() {
-                self.central_user_list_move_up(i);
+                if button.clicked() {
+                    self.central_user_list_move_up(i);
+                }
             }
         }
     }
@@ -1182,7 +1167,7 @@ impl MovieApp {
     fn production_grid(&mut self, ui: &mut Ui, searched: bool) {
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
             if searched {
-                ui.scroll_to_cursor(Some(Align::Min));
+                ui.scroll_to_cursor(Some(Align::Center));
             }
 
             if let Some(mut productions) = self.fetch_productions_job.poll_owned() {
