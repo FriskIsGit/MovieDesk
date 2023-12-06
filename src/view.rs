@@ -213,6 +213,7 @@ impl MovieView {
                         companies.push_str(", ")
                     }
                     ui.label(format!("Production companies: {companies}"));
+                    ui.label(format!("Tagline: {}", movie_details.tagline));
                 });
             });
         });
