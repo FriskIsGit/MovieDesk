@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::jobs::Job;
 use crate::movies::{Movie, UserMovie};
-use crate::production::{ListOrdering, EntryType, ListEntry, Production, ProdEntry};
+use crate::production::{ListOrdering, EntryType, ListEntry, Production, ProdEntry, ListFiltering};
 use crate::series::{SearchedSeries, UserSeries, Series};
 use crate::themoviedb::{TheMovieDB, Width};
 use crate::view::{LicenseView, MovieView, SeriesView, TrailersView};
@@ -33,14 +33,15 @@ pub struct MovieApp {
     // buttons are clicked), shrinking and expanding (when used inputs name of the production in a central panel
     // search bar). This is the list that is used for central panel drawing.
     central_draw_list: Vec<ListEntry>,
-    central_ordering: ListOrdering,
-    searched_string: String,
+    central_ordering:  ListOrdering,
+    central_filtering: ListFiltering,
+    searched_string:   String,
 
     // Right panel
-    user_movies: Vec<UserMovie>,
-    user_series: Vec<UserSeries>,
+    user_movies:    Vec<UserMovie>,
+    user_series:    Vec<UserSeries>,
     prod_positions: Vec<ProdEntry>,
-    selection: Selection,
+    selection:      Selection,
 
     toasts: Toasts,
 
@@ -85,6 +86,7 @@ impl MovieApp {
             central_user_list: Vec::new(),
             central_draw_list: Vec::new(),
             central_ordering: ListOrdering::UserDefined,
+            central_filtering: ListFiltering::new(),
             searched_string: String::new(),
 
             toasts: Toasts::new()
@@ -108,8 +110,8 @@ impl MovieApp {
             if pos.is_movie {
                 for i in 0..self.user_movies.len() {
                     //                                    cringe
-                    let movie = self.user_movies[i].movie.clone();
-                    if movie.id == pos.id {
+                    let movie = self.user_movies[i].clone();
+                    if movie.movie.id == pos.id {
                         self.central_list_add_movie(&movie);
                     }
                 }
@@ -127,7 +129,7 @@ impl MovieApp {
         self.central_draw_list_update();
     }
 
-    fn central_list_add_movie(&mut self, movie: &Movie) {
+    fn central_list_add_movie(&mut self, movie: &UserMovie) {
         let entry = ListEntry::from_movie(movie);
         self.central_user_list.push(entry);
         self.central_draw_list_update();
@@ -177,32 +179,51 @@ impl MovieApp {
 
     fn central_draw_list_update(&mut self) {
         self.central_draw_list.clear();
+
+        let searched_lower = self.searched_string.to_lowercase();
+
+        let mut new_draw_list = Vec::new();
+        for entry in &self.central_user_list {
+            if self.central_filtering.filter_favorites && !entry.favorite {
+                continue;
+            }
+
+            if self.central_filtering.filter_watched && !entry.watched {
+                continue;
+            }
+
+            if !entry.name.to_lowercase().contains(&searched_lower) {
+                continue;
+            }
+
+            new_draw_list.push(entry.clone());
+        }
+
         // NOTE: I suppose cloning the entries themself is not needed here. Could be improved by storing references,
         //       but of course, this requires a little more work and is more annoying to deal with.
-        self.central_draw_list = self.central_user_list.clone();
+        self.central_draw_list = new_draw_list;
 
         match self.central_ordering {
             ListOrdering::UserDefined => {}
-            ListOrdering::Alphabetic => self.central_draw_list.sort_by(|a, b| a.name.cmp(&b.name)),
-            ListOrdering::RatingAscending => self
-                .central_draw_list
-                .sort_by(|a, b| a.rating.partial_cmp(&b.rating).unwrap()),
-            ListOrdering::RatingDescending => self
-                .central_draw_list
-                .sort_by(|a, b| b.rating.partial_cmp(&a.rating).unwrap()),
+            ListOrdering::Alphabetic => 
+                self.central_draw_list.sort_by(|a, b| a.name.cmp(&b.name)),
+            ListOrdering::RatingAscending => 
+                self.central_draw_list.sort_by(|a, b| a.rating.partial_cmp(&b.rating).unwrap()),
+            ListOrdering::RatingDescending => 
+                self.central_draw_list .sort_by(|a, b| b.rating.partial_cmp(&a.rating).unwrap()),
         }
 
-        // NOTE: Definitely needs some improvements, but will do for now.
-        //       Also, fuzzy searching would be really nice!
-        let matches = self.central_draw_list.iter().filter(|entry| {
-            let searched_lower = self.searched_string.to_lowercase();
-            entry.name.to_lowercase().contains(&searched_lower)
-        });
-        let mut new_draw_list = Vec::new();
-        for entry in matches {
-            new_draw_list.push(entry.clone());
-        }
-        self.central_draw_list = new_draw_list;
+        // // NOTE: Definitely needs some improvements, but will do for now.
+        // //       Also, fuzzy searching would be really nice!
+        // let matches = self.central_draw_list.iter().filter(|entry| {
+        //     let searched_lower = self.searched_string.to_lowercase();
+        //     entry.name.to_lowercase().contains(&searched_lower)
+        // });
+        // let mut new_draw_list = Vec::new();
+        // for entry in matches {
+        //     new_draw_list.push(entry.clone());
+        // }
+        // self.central_draw_list = new_draw_list;
     }
 
     fn central_list_handle_selection(&mut self, entry_id: EntryType, is_selected: bool) {
@@ -261,6 +282,54 @@ impl MovieApp {
                     }
                 }
                 self.user_series.remove(found_idx);
+            }
+            EntryType::None => unreachable!(),
+        }
+
+        self.central_list_reload();
+    }
+
+    fn central_list_mark_watched(&mut self, entry_id: EntryType) {
+        match entry_id {
+            EntryType::Movie(id) => {
+                for movie in self.user_movies.iter_mut() {
+                    if movie.movie.id == id {
+                        movie.watched = !movie.watched;
+                        break;
+                    }
+                }
+            }
+            EntryType::Series(id) => {
+                for series in self.user_series.iter_mut() {
+                    if series.series.id == id {
+                        series.watched = !series.watched;
+                        break;
+                    }
+                }
+            }
+            EntryType::None => unreachable!(),
+        }
+
+        self.central_list_reload();
+    }
+
+    fn central_list_mark_favorite(&mut self, entry_id: EntryType) {
+        match entry_id {
+            EntryType::Movie(id) => {
+                for movie in self.user_movies.iter_mut() {
+                    if movie.movie.id == id {
+                        movie.favorite = !movie.favorite;
+                        break;
+                    }
+                }
+            }
+            EntryType::Series(id) => {
+                for series in self.user_series.iter_mut() {
+                    if series.series.id == id {
+                        series.favorite = !series.favorite;
+                        break;
+                    }
+                }
             }
             EntryType::None => unreachable!(),
         }
@@ -334,7 +403,7 @@ impl MovieApp {
         if !exists {
             self.prod_positions.push(ProdEntry::new(true, movie.id));
             let new_data = UserMovie::new(movie.clone());
-            self.central_list_add_movie(&movie);
+            self.central_list_add_movie(&new_data);
             self.user_movies.push(new_data);
         }
     }
@@ -467,6 +536,16 @@ impl MovieApp {
 
                     if ui.button("v").on_hover_text("Descending rating ordering").clicked() {
                         self.central_ordering = ListOrdering::RatingDescending;
+                        self.central_draw_list_update();
+                    }
+
+                    if ui.button("F").on_hover_text("Descending rating ordering").clicked() {
+                        self.central_filtering.filter_favorites = !self.central_filtering.filter_favorites;
+                        self.central_draw_list_update();
+                    }
+
+                    if ui.button("W").on_hover_text("Descending rating ordering").clicked() {
+                        self.central_filtering.filter_watched = !self.central_filtering.filter_watched;
                         self.central_draw_list_update();
                     }
                 });
@@ -604,7 +683,7 @@ impl MovieApp {
 
                 let button = ui.interact(rect, egui::Id::new("central_entry_fav_btn"), egui::Sense::click());
 
-                if button.is_pointer_button_down_on() {
+                if button.is_pointer_button_down_on() || self.central_draw_list[i].favorite {
                     let rect = rect.expand(1.0);
                     ui.painter().rect(rect, 6.0, egui::Color32::YELLOW, egui::Stroke::NONE);
                 } else if button.hovered() {
@@ -620,7 +699,34 @@ impl MovieApp {
                 ui.painter().text(icon_pos, egui::Align2::CENTER_CENTER, "⭐", icon_id, egui::Color32::BLACK);
 
                 if button.clicked() {
-                    println!("TODO");
+                    self.central_list_mark_favorite(self.central_draw_list[i].production_id);
+                }
+            }
+
+            { // Drawing and handling the "mark watched" button.
+                let pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(86.0, -5.0);
+                let size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
+                let rect = Rect::from_min_size(pos, size);
+
+                let button = ui.interact(rect, egui::Id::new("central_entry_watch_btn"), egui::Sense::click());
+
+                if button.is_pointer_button_down_on() || self.central_draw_list[i].watched {
+                    let rect = rect.expand(1.0);
+                    ui.painter().rect(rect, 6.0, egui::Color32::GREEN, egui::Stroke::NONE);
+                } else if button.hovered() {
+                    let rect = rect.expand(1.0);
+                    ui.painter().rect(rect, 6.0, egui::Color32::LIGHT_GREEN, egui::Stroke::NONE);
+                } else {
+                    ui.painter().rect(rect, 6.0, egui::Color32::GRAY, egui::Stroke::NONE);
+                }
+
+                let icon_pos = rect.min + Vec2::new(rect.width() / 2.0, rect.height() / 2.0 - 1.0);
+                let icon_id = egui::FontId::new(18.0, eframe::epaint::FontFamily::Proportional);
+
+                ui.painter().text(icon_pos, egui::Align2::CENTER_CENTER, "W", icon_id, egui::Color32::BLACK);
+
+                if button.clicked() {
+                    self.central_list_mark_watched(self.central_draw_list[i].production_id);
                 }
             }
 
@@ -656,7 +762,7 @@ impl MovieApp {
             }
 
             { // Drawing and handling the "mark favorite" button.
-                let pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(86.0, -5.0);
+                let pos = Pos2::new(entry_rect.max.x, entry_rect.min.y) - Vec2::new(148.0, -5.0);
                 let size = Vec2::new(entry_rect.height() - 10.0, entry_rect.height() - 10.0);
                 let rect = Rect::from_min_size(pos, size);
 
@@ -880,8 +986,16 @@ impl MovieApp {
                         todo!();
                     }
 
-                    let migrate_data = ui.add_enabled(false, egui::Button::new("Migrate data"));
+                    let migrate_data = ui.add_enabled(true, egui::Button::new("Migrate data"));
                     if migrate_data.clicked() {
+                        for series in &self.user_series {
+                            self.prod_positions.push(ProdEntry::new(false, series.series.id));
+                        }
+
+                        for movie in &self.user_movies {
+                            self.prod_positions.push(ProdEntry::new(true, movie.movie.id));
+                        }
+
                         // unreachable!("There is nothing to migrate. You shouldn't be able to click this by the way...");
                     }
 
@@ -1231,3 +1345,5 @@ impl Selection {
         self.episode.expect("Selection episode is None")
     }
 }
+
+

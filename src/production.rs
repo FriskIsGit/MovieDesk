@@ -166,16 +166,23 @@ pub struct ListEntry {
     pub name: String,
     pub poster_path: Option<String>, // Shouldn't be an option, should always have a fallback image btw.
     pub rating: f32,
+
+    pub favorite: bool,
+    pub watched: bool,
 }
 
 impl ListEntry {
-    pub fn from_movie(movie: &Movie) -> Self {
+    pub fn from_movie(user_movie: &UserMovie) -> Self {
+        let movie = &user_movie.movie;
         Self {
             production_id: EntryType::Movie(movie.id),
 
             name: movie.title.clone(),
             poster_path: movie.poster_path.clone(),
             rating: movie.vote_average,
+
+            favorite: user_movie.favorite,
+            watched: user_movie.watched,
         }
     }
 
@@ -187,6 +194,9 @@ impl ListEntry {
             name: series.name.clone(),
             poster_path: series.poster_path.clone(),
             rating: series.vote_average,
+
+            favorite: user_series.favorite,
+            watched: user_series.watched,
         }
     }
 
@@ -209,18 +219,23 @@ impl ListEntry {
     }
 }
 
+pub struct ListFiltering {
+    pub filter_favorites: bool,
+    pub filter_watched: bool,
+}
+
+impl ListFiltering {
+    pub fn new() -> Self {
+        Self {
+            filter_favorites: false,
+            filter_watched: false,
+        }
+    }
+}
+
 pub enum ListOrdering {
-    // This will require to store the list separately
     UserDefined,
     Alphabetic,
     RatingAscending,
     RatingDescending,
-    // TODO(maybe?):
-    // UserRatingAscending,
-    // UserRatingDescending,
-    // WatchedFirst,
-    // UnwatchedFirst,
-    // Favourites,
-    // WatchTime,
-    // Popularity,
 }
