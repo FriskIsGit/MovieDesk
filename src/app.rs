@@ -539,12 +539,12 @@ impl MovieApp {
                         self.central_draw_list_update();
                     }
 
-                    if ui.button("F").on_hover_text("Descending rating ordering").clicked() {
+                    if ui.button("F").on_hover_text("Favorites").clicked() {
                         self.central_filtering.filter_favorites = !self.central_filtering.filter_favorites;
                         self.central_draw_list_update();
                     }
 
-                    if ui.button("W").on_hover_text("Descending rating ordering").clicked() {
+                    if ui.button("W").on_hover_text("Watched").clicked() {
                         self.central_filtering.filter_watched = !self.central_filtering.filter_watched;
                         self.central_draw_list_update();
                     }
