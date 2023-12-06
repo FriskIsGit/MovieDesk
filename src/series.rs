@@ -12,13 +12,9 @@ pub struct Series {
     pub first_air_date: String,
     pub vote_average: f32,
     pub adult: bool,
-    #[serde(default)]
     pub number_of_seasons: u32,
-    #[serde(default)]
     pub number_of_episodes: u32,
-    #[serde(default)]
     pub status: String,
-    #[serde(default)]
     pub seasons: Vec<Season>,
 }
 impl Series {
@@ -64,6 +60,10 @@ pub struct UserSeries {
     pub user_rating: f32,
     pub note: String,
     pub season_notes: Vec<SeasonNotes>,
+    #[serde(default)]
+    pub watched: bool,
+    #[serde(default)]
+    pub favorite: bool
 }
 
 impl UserSeries {
@@ -84,6 +84,8 @@ impl UserSeries {
             note: String::new(),
             user_rating: 0.0,
             season_notes: notes,
+            watched: false,
+            favorite: false,
         }
     }
 }

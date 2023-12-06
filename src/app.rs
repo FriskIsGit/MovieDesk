@@ -880,16 +880,8 @@ impl MovieApp {
                         todo!();
                     }
 
-                    let migrate_data = ui.add_enabled(true, egui::Button::new("Migrate data"));
+                    let migrate_data = ui.add_enabled(false, egui::Button::new("Migrate data"));
                     if migrate_data.clicked() {
-                        for series in &self.user_series {
-                            self.prod_positions.push(ProdEntry::new(false, series.series.id));
-                        }
-
-                        for movie in &self.user_movies {
-                            self.prod_positions.push(ProdEntry::new(true, movie.movie.id));
-                        }
-
                         // unreachable!("There is nothing to migrate. You shouldn't be able to click this by the way...");
                     }
 

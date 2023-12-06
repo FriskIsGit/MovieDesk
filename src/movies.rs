@@ -73,6 +73,10 @@ pub struct UserMovie {
     pub movie: Movie,
     pub user_rating: f32,
     pub note: String,
+    #[serde(default)]
+    pub watched: bool,
+    #[serde(default)]
+    pub favorite: bool
 }
 
 impl UserMovie {
@@ -81,6 +85,8 @@ impl UserMovie {
             movie,
             note: String::new(),
             user_rating: 0.0,
+            watched: false,
+            favorite: false
         }
     }
 }
