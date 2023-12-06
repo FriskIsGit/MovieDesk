@@ -673,6 +673,7 @@ impl MovieApp {
 
                 if button.clicked() {
                     self.central_list_remove_entry(self.central_draw_list[i].production_id);
+                    continue;
                 }
             }
 
@@ -700,6 +701,7 @@ impl MovieApp {
 
                 if button.clicked() {
                     self.central_list_mark_favorite(self.central_draw_list[i].production_id);
+                    continue;
                 }
             }
 
@@ -727,6 +729,7 @@ impl MovieApp {
 
                 if button.clicked() {
                     self.central_list_mark_watched(self.central_draw_list[i].production_id);
+                    continue;
                 }
             }
 
