@@ -222,13 +222,15 @@ impl ListEntry {
 pub struct ListFiltering {
     pub filter_favorites: bool,
     pub filter_watched: bool,
+    pub filter_to_watch: bool,
 }
 
 impl ListFiltering {
     pub fn new() -> Self {
         Self {
             filter_favorites: false,
-            filter_watched: false,
+            filter_watched:   false,
+            filter_to_watch:  false,
         }
     }
 }

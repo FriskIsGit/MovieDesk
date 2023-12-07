@@ -192,6 +192,10 @@ impl MovieApp {
                 continue;
             }
 
+            if self.central_filtering.filter_to_watch && entry.watched {
+                continue;
+            }
+
             if !entry.name.to_lowercase().contains(&searched_lower) {
                 continue;
             }
@@ -545,7 +549,14 @@ impl MovieApp {
                     }
 
                     if ui.button("W").on_hover_text("Watched").clicked() {
+                        self.central_filtering.filter_to_watch = false;
                         self.central_filtering.filter_watched = !self.central_filtering.filter_watched;
+                        self.central_draw_list_update();
+                    }
+
+                    if ui.button("TW").on_hover_text("To Watch").clicked() {
+                        self.central_filtering.filter_watched = false;
+                        self.central_filtering.filter_to_watch = !self.central_filtering.filter_to_watch;
                         self.central_draw_list_update();
                     }
                 });
