@@ -845,11 +845,14 @@ impl MovieApp {
                 let movie = &user_movie.movie;
                 ui.heading(&movie.title);
 
-                if let Some(poster) = &movie.poster_path {
-                    let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
-                    let image = egui::Image::new(image_url);
-                    ui.add_sized([100.0, 100.0], image);
-                }
+                ui.horizontal(|ui| {
+                    if let Some(poster) = &movie.poster_path {
+                        let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
+                        let image = egui::Image::new(image_url);
+                        ui.add_sized([100.0, 100.0], image);
+                    }
+                    ui.checkbox(&mut user_movie.watched, "Watched");
+                });
             } else {
                 let Some(user_series) = self.user_series.get_mut(index) else {
                     return;
@@ -857,11 +860,14 @@ impl MovieApp {
                 let series = &user_series.series;
                 ui.heading(&series.name);
 
-                if let Some(poster) = &series.poster_path {
-                    let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
-                    let image = egui::Image::new(image_url);
-                    ui.add_sized([100.0, 100.0], image);
-                }
+                ui.horizontal(|ui| {
+                    if let Some(poster) = &series.poster_path {
+                        let image_url = TheMovieDB::get_full_poster_url(poster, Width::W300);
+                        let image = egui::Image::new(image_url);
+                        ui.add_sized([100.0, 100.0], image);
+                    }
+                    ui.checkbox(&mut user_series.watched, "Watched");
+                });
 
                 let display = if self.selection.season.is_some() {
                     format!("S{}", self.selection.season())
@@ -932,6 +938,7 @@ impl MovieApp {
                 ui.add_space(8.0);
                 ui.label("Your notes:");
                 ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
+                    // TODO follow cursor instead of expanding text field beyond window bounds
                     ui.text_edit_multiline(&mut user_movie.note);
                 });
             } else {
