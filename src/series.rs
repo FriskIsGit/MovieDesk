@@ -60,22 +60,15 @@ pub struct UserSeries {
     pub user_rating: f32,
     pub note: String,
     pub season_notes: Vec<SeasonNotes>,
-    #[serde(default)]
     pub watched: bool,
-    #[serde(default)]
     pub favorite: bool
 }
 
 impl UserSeries {
     pub fn new(series: Series) -> Self {
-        let mut notes = Vec::new();
+        let mut notes = Vec::with_capacity(series.seasons.len());
         for season in &series.seasons {
-            let mut episode_notes = Vec::new();
-            for _ in 0..season.episode_count {
-                episode_notes.push(String::new())
-            }
-
-            let season_notes = SeasonNotes::new(episode_notes);
+            let season_notes = SeasonNotes::empty(season.episode_count as usize);
             notes.push(season_notes);
         }
 
@@ -87,6 +80,10 @@ impl UserSeries {
             watched: false,
             favorite: false,
         }
+    }
+    // notes for specials end up at the end of the vector
+    pub fn season_note(&mut self, season_num: u32) -> &mut SeasonNotes {
+        &mut self.season_notes[season_num as usize - 1]
     }
 }
 
@@ -160,11 +157,24 @@ pub struct SeasonNotes {
 }
 
 impl SeasonNotes {
-    pub fn new(episode_notes: Vec<String>) -> Self {
+    pub fn empty(episode_count: usize) -> Self {
+        let episode_notes = vec![String::new(); episode_count];
         Self {
             note: "".into(),
             user_rating: 0.0,
             episode_notes,
+        }
+    }
+    pub fn episode_note(&mut self, episode_num: u32) -> &mut String {
+        &mut self.episode_notes[episode_num as usize - 1]
+    }
+    pub fn ensure_length(&mut self, episode_count: usize) {
+        if episode_count <= self.episode_notes.len() {
+            return
+        }
+        let fill = episode_count - self.episode_notes.len();
+        for _ in 0..fill {
+            self.episode_notes.push(String::new());
         }
     }
 }

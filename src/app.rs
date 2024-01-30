@@ -400,6 +400,23 @@ impl MovieApp {
         self.central_list_reload();
     }
 
+    fn fix_data_integrity(&mut self) {
+        let changes = production::fix_data_integrity(&mut self.user_series, &mut self.user_movies, &mut self.prod_positions);
+        let text = if changes == 0 {
+            format!("No changes were made")
+        } else {
+            format!("Made {changes} different changes to user data")
+        };
+        self.toasts.add(Toast {
+            text: text.into(),
+            kind: ToastKind::Info,
+            options: ToastOptions::default()
+                .duration_in_seconds(4.0)
+                .show_progress(true)
+                .show_icon(true),
+        });
+    }
+
     pub fn add_movie(&mut self, movie: Movie) {
         let exists = self.user_movies.iter()
             .any(|user_movie| user_movie.movie.id == movie.id);
@@ -947,7 +964,7 @@ impl MovieApp {
                     // Make this a custom button/slider thing where you click on stars to select rating?
                     // ⭐⭐⭐⭐⭐
                     let rating = match self.selection.season {
-                        Some(season_num) => &mut user_series.season_notes[season_num as usize - 1].user_rating,
+                        Some(season_num) => &mut user_series.season_note(season_num).user_rating,
                         None => &mut user_series.user_rating,
                     };
                     ui.add(
@@ -964,8 +981,8 @@ impl MovieApp {
                     // NOTE: Format every frame. BAD! We need to cache it.
                     ui.label(format!("S{season_num} E{episode_num} notes:"));
                     ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                        let season_notes = &mut user_series.season_notes[season_num as usize - 1];
-                        ui.text_edit_multiline(&mut season_notes.episode_notes[episode_num as usize - 1]);
+                        let season_notes = user_series.season_note(season_num);
+                        ui.text_edit_multiline(season_notes.episode_note(episode_num));
                     });
                     return;
                 }
@@ -974,7 +991,7 @@ impl MovieApp {
                     // NOTE: Format every frame. BAD! We need to cache it.
                     ui.label(format!("Season {} notes:", season_num));
                     ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                        ui.text_edit_multiline(&mut user_series.season_notes[season_num as usize - 1].note);
+                        ui.text_edit_multiline(&mut user_series.season_note(season_num).note);
                     });
                     return;
                 }
@@ -1007,17 +1024,8 @@ impl MovieApp {
                         todo!();
                     }
 
-                    let migrate_data = ui.add_enabled(true, egui::Button::new("Migrate data"));
-                    if migrate_data.clicked() {
-                        for series in &self.user_series {
-                            self.prod_positions.push(ProdEntry::new(false, series.series.id));
-                        }
-
-                        for movie in &self.user_movies {
-                            self.prod_positions.push(ProdEntry::new(true, movie.movie.id));
-                        }
-
-                        // unreachable!("There is nothing to migrate. You shouldn't be able to click this by the way...");
+                    if ui.button("Ensure data integrity").clicked() {
+                        self.fix_data_integrity();
                     }
 
                     if ui.button("Save config").clicked() {

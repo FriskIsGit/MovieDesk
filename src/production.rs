@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::movies::{Movie, UserMovie};
 use crate::series::{SearchedSeries, UserSeries};
 use serde::{Deserialize, Serialize};
@@ -127,6 +128,61 @@ pub fn deserialize_user_productions(path: Option<String>) -> Result<UserData, St
     Ok(data)
 }
 
+type Changes = usize;
+pub fn fix_data_integrity(user_series: &mut Vec<UserSeries>,
+                          user_movies: &mut Vec<UserMovie>,
+                          prod_positions: &mut Vec<ProdEntry>) -> Changes {
+    let mut changes = 0;
+    let prod_len = user_series.len() + user_movies.len();
+    let positions_len = prod_positions.len();
+    // #1 Production positions missing
+    if prod_len != positions_len {
+        if prod_len > positions_len {
+            let mut position_ids: HashSet<u32> = HashSet::new();
+            for position in prod_positions.iter() {
+                position_ids.insert(position.id);
+            }
+            for u_series in user_series.iter() {
+                if !position_ids.contains(&u_series.series.id) {
+                    let prod_entry = ProdEntry::new(false, u_series.series.id);
+                    prod_positions.push(prod_entry);
+                    changes += 1;
+                }
+            }
+            for u_movie in user_movies {
+                if !position_ids.contains(&u_movie.movie.id) {
+                    let prod_entry = ProdEntry::new(true, u_movie.movie.id);
+                    prod_positions.push(prod_entry);
+                    changes += 1;
+                }
+            }
+        } else {
+            // TODO delete prod entries which don't map to any productions
+        }
+    }
+
+    // #2 Ensure notes lengths
+    for u_series in user_series {
+        let mut episode_counts = Vec::with_capacity(u_series.series.seasons.len());
+        let first_season_index = if u_series.series.has_specials() { 1 } else { 0 };
+        let seasons = &u_series.series.seasons;
+        // println!("Checking {} | seasons: {}", u_series.series.name, u_series.series.number_of_seasons);
+        for i in first_season_index..seasons.len() {
+            let season = &seasons[i];
+            episode_counts.push(season.episode_count as usize)
+        }
+        let story_seasons = u_series.series.number_of_seasons; // specials aren't included
+        for i in 0..story_seasons {
+            let i_index = i as usize;
+            let season_note = &mut u_series.season_notes[i_index];
+            if season_note.episode_notes.len() < episode_counts[i_index] {
+                season_note.ensure_length(episode_counts[i_index]);
+                changes += 1;
+            }
+        }
+    }
+    changes
+}
 
 /*
 Serialization:
