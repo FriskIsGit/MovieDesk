@@ -1,6 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::fmt::Error;
 use crate::movies::{Movie, UserMovie};
-use crate::series::{SearchedSeries, UserSeries};
+use crate::series::{SearchedSeries, SeasonNotes, UserSeries};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs::File;
@@ -47,6 +48,7 @@ pub struct Keyword {
     name: String,
 }
 
+#[derive(Debug)]
 pub struct UserData {
     pub user_series: Vec<UserSeries>,
     pub user_movies: Vec<UserMovie>,
@@ -182,6 +184,137 @@ pub fn fix_data_integrity(user_series: &mut Vec<UserSeries>,
         }
     }
     changes
+}
+
+// rating conflicts will not be merged
+pub fn merge_data(user_series: &mut Vec<UserSeries>,
+                          user_movies: &mut Vec<UserMovie>,
+                          prod_positions: &mut Vec<ProdEntry>, merge_path: &str) -> Result<(), String> {
+    let outcome = deserialize_user_productions(Some(merge_path.into()));
+    let Ok(mut other_data) = outcome else {
+        return Err(outcome.unwrap_err());
+    };
+
+    // Common movies merge
+    for mov in user_movies.iter_mut() {
+        for mut other_movie in &other_data.user_movies {
+            if mov.movie.id != other_movie.movie.id {
+                continue
+            }
+
+            println!("Merging movie: {}", mov.movie.title);
+            mov.favorite = mov.favorite || other_movie.favorite;
+            mov.watched = mov.watched || other_movie.watched;
+            merge_strings(&mut mov.note, &other_movie.note);
+            mov.user_rating = pick_with_value(mov.user_rating, other_movie.user_rating);
+            break
+        }
+    }
+
+    // Common series merge
+    for series in user_series.iter_mut() {
+        for other_series in &other_data.user_series {
+            if series.series.id != other_series.series.id {
+                continue
+            }
+            println!("Merging series: {}", series.series.name);
+            series.favorite = series.favorite || other_series.favorite;
+            series.watched = series.watched || other_series.watched;
+            merge_strings(&mut series.note, &other_series.note);
+            series.user_rating = pick_with_value(series.user_rating, other_series.user_rating);
+            merge_season_notes(&mut series.season_notes, &other_series.season_notes);
+            break
+        }
+    }
+
+    // Series that are only present in the other data set, consumed into the hashmap
+    let mut new_series: HashMap<u32, UserSeries> = HashMap::new();
+    while let Some(u_series) = other_data.user_series.pop() {
+        new_series.insert(u_series.series.id, u_series);
+    }
+    for u_series in user_series.iter() {
+        if new_series.contains_key(&u_series.series.id) {
+            new_series.remove(&u_series.series.id);
+        }
+    }
+
+    let new_series_ids: Vec<u32> = new_series.keys().cloned().collect();
+    for id in new_series_ids.iter() {
+        let Some(series) = new_series.remove(id) else {
+            continue
+        };
+        let prod_entry = ProdEntry::new(false, *id);
+        println!("Adding {}", series.series.name);
+        prod_positions.push(prod_entry);
+        user_series.push(series);
+    }
+
+    // Movies that are only present in the other data set, consumed into the hashmap
+    let mut new_movies: HashMap<u32, UserMovie> = HashMap::new();
+    while let Some(u_movie) = other_data.user_movies.pop() {
+        new_movies.insert(u_movie.movie.id, u_movie);
+    }
+    for u_movie in user_movies.iter() {
+        if new_movies.contains_key(&u_movie.movie.id) {
+            new_movies.remove(&u_movie.movie.id);
+        }
+    }
+
+    let new_movies_ids: Vec<u32> = new_movies.keys().cloned().collect();
+    for id in new_movies_ids.iter() {
+        let Some(movie) = new_movies.remove(id) else {
+            continue
+        };
+        let prod_entry = ProdEntry::new(true, *id);
+        println!("Adding {}", movie.movie.title);
+        prod_positions.push(prod_entry);
+        user_movies.push(movie);
+    }
+    Ok(())
+}
+
+fn merge_season_notes(notes: &mut Vec<SeasonNotes>, other_notes: &Vec<SeasonNotes>) {
+    let len = notes.len();
+    if len != other_notes.len() {
+        eprintln!("Refusing to merge because of different note lengths");
+        return
+    }
+    for i in 0..len {
+        let season = &mut notes[i];
+        let other_season = &other_notes[i];
+        merge_strings(&mut season.note, &other_season.note);
+        season.user_rating = pick_with_value(season.user_rating, other_season.user_rating);
+        if season.episode_notes.len() != other_season.episode_notes.len() {
+            eprintln!("Refusing to merge because of different episode lengths: {}, {}",
+                      season.episode_notes.len(),
+                      other_season.episode_notes.len(),
+            );
+            continue
+        }
+        let episode_count = season.episode_notes.len();
+        for j in 0..episode_count {
+            merge_strings(&mut season.episode_notes[j], &other_season.episode_notes[j]);
+        }
+    }
+}
+
+fn pick_with_value(rating: f32, other_rating: f32) -> f32 {
+    if rating == 0.0 {
+        return other_rating
+    }
+    return rating
+}
+
+pub fn merge_strings(merged: &mut String, with: &str) {
+    if merged.is_empty() {
+        merged.push_str(&with);
+        return
+    }
+    if with.is_empty() {
+        return
+    }
+    merged.push_str("\n>>>>>>>>\n");
+    merged.push_str(with);
 }
 
 /*

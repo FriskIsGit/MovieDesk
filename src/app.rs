@@ -45,6 +45,9 @@ pub struct MovieApp {
 
     toasts: Toasts,
 
+    // Top panel
+    merge_path: String,
+
     // View states
     series_view: SeriesView,
     movie_view: MovieView,
@@ -92,6 +95,9 @@ impl MovieApp {
             toasts: Toasts::new()
                 .anchor(egui::Align2::RIGHT_TOP, (1.0, 1.0))
                 .direction(egui::Direction::TopDown),
+
+            merge_path: "".into(),
+
             series_view: SeriesView::new(),
             movie_view: MovieView::new(),
             trailers_view: TrailersView::new(),
@@ -1020,9 +1026,41 @@ impl MovieApp {
                         self.load_data();
                     }
 
-                    if ui.button("Load data from file").clicked() {
+                    /*if ui.button("Load data from file").clicked() {
                         todo!();
-                    }
+                    }*/
+
+                    ui.menu_button("Merge data", |ui| {
+                        ui.text_edit_singleline(&mut self.merge_path);
+                        if ui.button("Merge productions").clicked() {
+                            let res = production::merge_data(&mut self.user_series,
+                                                   &mut self.user_movies,
+                                                   &mut self.prod_positions,
+                                                   &self.merge_path);
+                            match res {
+                                Ok(_) => {
+                                    self.toasts.add(Toast{
+                                        kind: ToastKind::Success,
+                                        text: "Successfully merged data".into(),
+                                        options: ToastOptions::default()
+                                            .duration_in_seconds(2.5)
+                                            .show_progress(true)
+                                            .show_icon(true),
+                                    });
+                                }
+                                Err(msg) => {
+                                    self.toasts.add(Toast{
+                                        kind: ToastKind::Error,
+                                        text: msg.into(),
+                                        options: ToastOptions::default()
+                                            .duration_in_seconds(3.5)
+                                            .show_progress(true)
+                                            .show_icon(true),
+                                    });
+                                }
+                            }
+                        }
+                    });
 
                     if ui.button("Ensure data integrity").clicked() {
                         self.fix_data_integrity();
