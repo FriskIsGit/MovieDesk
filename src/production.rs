@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt::Error;
 use crate::movies::{Movie, UserMovie};
 use crate::series::{SearchedSeries, SeasonNotes, UserSeries};
 use serde::{Deserialize, Serialize};
@@ -197,7 +196,7 @@ pub fn merge_data(user_series: &mut Vec<UserSeries>,
 
     // Common movies merge
     for mov in user_movies.iter_mut() {
-        for mut other_movie in &other_data.user_movies {
+        for other_movie in &other_data.user_movies {
             if mov.movie.id != other_movie.movie.id {
                 continue
             }
@@ -310,11 +309,18 @@ pub fn merge_strings(merged: &mut String, with: &str) {
         merged.push_str(&with);
         return
     }
-    if with.is_empty() {
+    if with.is_empty() || merged.starts_with(with) {
         return
     }
-    merged.push_str("\n>>>>>>>>\n");
-    merged.push_str(with);
+
+    let find_result = with.find(&*merged);
+    if find_result.is_some() && find_result.unwrap() == 0 {
+        merged.clear();
+        merged.push_str(with)
+    } else {
+        merged.push_str("\n>>>>>>>>\n");
+        merged.push_str(with);
+    }
 }
 
 /*

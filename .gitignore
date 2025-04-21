@@ -4,3 +4,4 @@ Cargo.lock
 *.iml
 res/config.json
 res/user_prod.json
+*.jpg
